@@ -1,0 +1,22 @@
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.1%[0m[1m  (스텝 100 / 200000  |  ETA 112:47:06 h)[0m
+   # Ep. | Trans. | Cyc.:     26 | 100 | 25
+   Epsilon:                   0.000
+   Score (1 MA | record):     29910.0 | 71480
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              8.3920
+   Learning rate:             0.000300
+------
+   Comp time (last 100):      203 s
+   Total comp time:           0:03:23 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.1%[0m[1m  (스텝 200 / 200000  |  ETA 107:13:41 h)[0m
+   # Ep. | Trans. | Cyc.:     54 | 200 | 50
+   Epsilon:                   0.000
+   Score (1 MA | record):     20980.0 | 71480
+   Win-ratio (1 MA):          1.00
+   Loss (10 MA):              7.2745
+   Learning rate:             0.000300
+------
+   Comp time (last 100):      183 s
+   Total comp time:           0:06:26 h

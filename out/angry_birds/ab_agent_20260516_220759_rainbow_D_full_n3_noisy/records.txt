@@ -1,0 +1,110 @@
+New return record achieved! The new best return is 1.65.
+This is how the episode ended:
+Transition 13:
+State representation not implemented.
+Action:     alpha = 64.0 °, tap_time = 400 ms
+Reward:     -1.05
+Score:      29040.0
+Terminal:   True
+Priority:   15.32
+
+New return record achieved! The new best return is 4.85.
+This is how the episode ended:
+Transition 20:
+State representation not implemented.
+Action:     alpha = 85.0 °, tap_time = 1600 ms
+Reward:     -2.827
+Score:      0.0
+Terminal:   True
+Priority:   15.32
+
+New return record achieved! The new best return is 6.69.
+This is how the episode ended:
+Transition 43:
+State representation not implemented.
+Action:     alpha = 98.0 °, tap_time = 800 ms
+Reward:     4.95
+Score:      18900.0
+Terminal:   True
+Priority:   15.32
+
+New return record achieved! The new best return is 9.87.
+This is how the episode ended:
+Transition 77:
+State representation not implemented.
+Action:     alpha = 44.0 °, tap_time = 2000 ms
+Reward:     8.599999
+Score:      49660.0
+Terminal:   True
+Priority:   15.32
+
+New return record achieved! The new best return is 12.06.
+This is how the episode ended:
+Transition 967:
+State representation not implemented.
+Action:     alpha = 44.0 °, tap_time = 2400 ms
+Reward:     6.6499996
+Score:      73120.0
+Terminal:   True
+Priority:   15.32
+
+New return record achieved! The new best return is 13.72.
+This is how the episode ended:
+Transition 25:
+State representation not implemented.
+Action:     alpha = 64.0 °, tap_time = 1200 ms
+Reward:     7.75
+Score:      88670.0
+Terminal:   True
+Priority:   6.85
+
+New return record achieved! The new best return is 14.47.
+This is how the episode ended:
+Transition 262:
+State representation not implemented.
+Action:     alpha = 71.0 °, tap_time = 800 ms
+Reward:     8.7
+Score:      95720.0
+Terminal:   True
+Priority:   8.56
+
+New return record achieved! The new best return is 16.03.
+This is how the episode ended:
+Transition 490:
+State representation not implemented.
+Action:     alpha = 10.0 °, tap_time = 400 ms
+Reward:     9.45
+Score:      112840.0
+Terminal:   True
+Priority:   10.28
+
+New return record achieved! The new best return is 16.68.
+This is how the episode ended:
+Transition 3550:
+State representation not implemented.
+Action:     alpha = 71.0 °, tap_time = 1200 ms
+Reward:     7.45
+Score:      119270.0
+Terminal:   True
+Priority:   10.28
+
+New return record achieved! The new best return is 20.83.
+This is how the episode ended:
+Transition 7066:
+State representation not implemented.
+Action:     alpha = 64.0 °, tap_time = 2000 ms
+Reward:     8.2
+Score:      159770.0
+Terminal:   True
+Priority:   10.53
+
+New return record achieved! The new best return is 21.33.
+This is how the episode ended:
+Transition 26439:
+State representation not implemented.
+Action:     alpha = 71.0 °, tap_time = 2000 ms
+Reward:     8.2
+Score:      164770.0
+Terminal:   True
+Priority:   13.94
+

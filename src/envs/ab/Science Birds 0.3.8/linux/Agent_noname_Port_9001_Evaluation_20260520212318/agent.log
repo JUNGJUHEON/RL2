@@ -1,0 +1,6 @@
+ScreenShotRequest:20260520212320: levelName :./Levels/novelty_level_0/type2_win/Levels/00019_1_1_2_0.xml: trial :0,end
+DragDetails:20260520212326: levelName :./Levels/novelty_level_0/type2_win/Levels/00019_1_1_2_0.xml: trial :0: dragx :219.6325: dragy :121.3663: dragDX :143: DragDY :391: TapTime :400: Score :0,end
+ScreenShotRequest:20260520212327: levelName :./Levels/novelty_level_0/type2_win/Levels/00019_1_1_2_0.xml: trial :0,end
+ScreenShotRequest:20260520212328: levelName :./Levels/novelty_level_0/type2_win/Levels/00067_1_1_2_0.xml: trial :0,end
+DragDetails:20260520212331: levelName :./Levels/novelty_level_0/type2_win/Levels/00067_1_1_2_0.xml: trial :0: dragx :258.6237: dragy :100.3054: dragDX :201: DragDY :434: TapTime :800: Score :0,end
+ScreenShotRequest:20260520212333: levelName :./Levels/novelty_level_0/type2_win/Levels/00067_1_1_2_0.xml: trial :0,end

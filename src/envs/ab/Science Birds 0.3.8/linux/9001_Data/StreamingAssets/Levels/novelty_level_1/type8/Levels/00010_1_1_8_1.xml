@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-16"?>
+<Level width ="2">
+<Camera x="0" y="-1" minWidth="25" maxWidth="35">
+<Score highScore ="0">
+<Birds>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+</Birds>
+<Slingshot x="-10.327346938775511" y="-2.5122448979591834">
+<GameObjects>
+<Block type="RectSmall" material="stone" x="2.9353061224489796" y="-2.3685714285714288" rotation="269.926" />
+<Block type="novel_object_4" material="ice" x="3.70489795918367" y="-1.9583673469387757" rotation="269.321" />
+<Block type="novel_object_4" material="ice" x="3.0089795918367326" y="-0.7132653061224494" rotation="154.631" />
+<Block type="novel_object_4" material="ice" x="1.4261224489795907" y="-0.7238775510204083" rotation="24.326999999999998" />
+<Block type="RectFat" material="wood" x="2.261632653061225" y="-1.5342857142857145" rotation="179.433" />
+<Block type="novel_object_5" material="ice" x="2.2428571428571438" y="-0.9220408163265308" rotation="269.523" />
+<Block type="RectSmall" material="wood" x="1.1006122448979578" y="-2.3538775510204086" rotation="90.05599999999998" />
+<Block type="RectSmall" material="wood" x="3.368775510204081" y="-2.3618367346938776" rotation="89.95499999999998" />
+<Block type="RectSmall" material="wood" x="3.101224489795916" y="-1.662448979591837" rotation="331.102" />
+<Block type="RectSmall" material="wood" x="1.3755102040816336" y="-1.6467346938775513" rotation="30.286" />
+<Block type="RectSmall" material="stone" x="1.4930612244897947" y="-2.3540816326530614" rotation="269.854" />
+<Block type="RectMedium" material="stone" x="2.2373469387755094" y="-1.8485714285714285" rotation="359.417" />
+<Platform type="Platform" material="" x="1.606530612244896" y="-3.763877551020408" rotation="270.003" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Platform type="Platform" material="" x="2.813673469387755" y="-3.7781632653061226" rotation="270.003" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Platform type="Platform" material="" x="0.6148979591836738" y="-3.490816326530612" rotation="315.002" scaleX="1.5873015873015874" scaleY="1.5873015873015874" />
+<Platform type="Platform" material="" x="3.8197959183673458" y="-3.490816326530612" rotation="315.002" scaleX="1.5873015873015874" scaleY="1.5873015873015874" />
+<Pig type="BasicSmall" material="" x="2.305306122448979" y="-2.544489795918367" rotation="0.014000000000010004" />
+<Block type="novel_object_4" material="ice" x="0.7351020408163258" y="-1.9538775510204083" rotation="270.696" />
+</GameObjects>
+</Level>

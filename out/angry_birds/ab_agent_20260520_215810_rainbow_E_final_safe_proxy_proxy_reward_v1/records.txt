@@ -1,0 +1,10 @@
+New return record achieved! The new best return is 11.30.
+This is how the episode ended:
+Transition 120:
+State representation not implemented.
+Action:     alpha = 133.0 °, tap_time = 400 ms
+Reward:     7.88
+Score:      45110.0
+Terminal:   True
+Priority:   13.49
+

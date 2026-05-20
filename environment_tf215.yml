@@ -1,0 +1,26 @@
+name: aibirds_tf215
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      # Professor-compatible TensorFlow stack: TF < 2.16 keeps Keras 2.x bundled.
+      - tensorflow[and-cuda]==2.15.1
+      - matplotlib>=3.7.0
+      - pygame>=2.5.0
+      - opencv-python>=4.8.0
+      - Pillow>=10.0.0
+      - imageio>=2.31.0
+      - scikit-image>=0.21.0
+      - pandas>=2.0.0
+      - sty>=1.0.4
+      - tabulate>=0.9.0
+      - screeninfo>=0.8.1
+      - psutil>=5.9.5
+      - tqdm>=4.66.0
+      - guppy3>=3.1.4
+      - pympler>=1.0.1
+      - objgraph>=3.6.0
+      - gymnasium>=0.29.0

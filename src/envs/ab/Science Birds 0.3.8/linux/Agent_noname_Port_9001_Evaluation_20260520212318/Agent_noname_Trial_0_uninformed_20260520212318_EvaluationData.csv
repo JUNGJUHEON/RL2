@@ -1,0 +1,2 @@
+EvaluationIndex,LevelIndex,Score,LevelStatus,birdsRemaining,pigsRemaining,birdsAtStart,pigsAtStart, trial,levelName,playStatus,informed,novelty
+1,19,4670,Playing,3,4,4,4, 0,./Levels/novelty_level_0/type2_win/Levels/00019_1_1_2_0.xml,training,uninformed,basic

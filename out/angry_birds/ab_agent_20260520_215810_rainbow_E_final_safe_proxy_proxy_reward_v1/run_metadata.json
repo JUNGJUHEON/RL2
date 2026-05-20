@@ -1,0 +1,340 @@
+{
+  "hardware": {
+    "use_gpu": true,
+    "gpu_memory_limit_mb": null,
+    "runtime_status": {
+      "requested_mode": "GPU",
+      "tensorflow_built_with_cuda": true,
+      "cuda_visible_devices": "0",
+      "physical_gpus": [
+        "/physical_device:GPU:0"
+      ],
+      "logical_gpus": [
+        "/device:GPU:0"
+      ],
+      "using_cuda": true
+    },
+    "expected_machine": "Ubuntu + NVIDIA RTX 4060 Ti + Intel Core Ultra 9 285K"
+  },
+  "training_size_preset": "full",
+  "training_size_preset_info": {
+    "num_parallel_steps": 200000,
+    "memory_size": 100000,
+    "replay_batch_size": 32,
+    "notes": "First serious full-performance run for RTX 4060 Ti class hardware."
+  },
+  "training_size_presets": {
+    "smoke": {
+      "num_parallel_steps": 5000,
+      "memory_size": 30000,
+      "replay_batch_size": 16,
+      "notes": "Crash check only."
+    },
+    "diagnostic": {
+      "num_parallel_steps": 10000,
+      "memory_size": 30000,
+      "replay_batch_size": 16,
+      "notes": "Short diagnostics sanity run."
+    },
+    "compare": {
+      "num_parallel_steps": 50000,
+      "memory_size": 30000,
+      "replay_batch_size": 16,
+      "notes": "A/B/C/D comparison size."
+    },
+    "full": {
+      "num_parallel_steps": 200000,
+      "memory_size": 100000,
+      "replay_batch_size": 32,
+      "notes": "First serious full-performance run for RTX 4060 Ti class hardware."
+    }
+  },
+  "rainbow_run_variant": "E",
+  "rainbow_run_variant_info": {
+    "slug": "rainbow_E_final_safe_proxy",
+    "label": "E: final-safe full Rainbow, n_step=3, NoisyNet ON, all400 + proxy reward",
+    "q_head_preset": "full_rainbow",
+    "n_step": 3,
+    "noise_std_init": 0.5,
+    "epsilon_init": 0.0,
+    "epsilon_min": 0.0,
+    "gamma": 0.99
+  },
+  "rainbow_run_variants": {
+    "A": {
+      "slug": "rainbow_A_c51_n1_no_noisy",
+      "label": "A: ConvNeXtTiny + Double + Dueling + PER + C51, n_step=1, NoisyNet OFF",
+      "q_head_preset": "c51_distributional",
+      "n_step": 1,
+      "noise_std_init": 0.0,
+      "epsilon_init": 1.0,
+      "epsilon_min": 0.1,
+      "gamma": 0.99
+    },
+    "B": {
+      "slug": "rainbow_B_c51_n3_no_noisy",
+      "label": "B: ConvNeXtTiny + Double + Dueling + PER + C51, n_step=3, NoisyNet OFF",
+      "q_head_preset": "c51_distributional",
+      "n_step": 3,
+      "noise_std_init": 0.0,
+      "epsilon_init": 1.0,
+      "epsilon_min": 0.1,
+      "gamma": 0.99
+    },
+    "C": {
+      "slug": "rainbow_C_c51_n1_noisy",
+      "label": "C: ConvNeXtTiny + Double + Dueling + PER + C51, n_step=1, NoisyNet ON",
+      "q_head_preset": "full_rainbow",
+      "n_step": 1,
+      "noise_std_init": 0.5,
+      "epsilon_init": 0.0,
+      "epsilon_min": 0.0,
+      "gamma": 0.99
+    },
+    "D": {
+      "slug": "rainbow_D_full_n3_noisy",
+      "label": "D: ConvNeXtTiny full Rainbow, n_step=3, NoisyNet ON",
+      "q_head_preset": "full_rainbow",
+      "n_step": 3,
+      "noise_std_init": 0.5,
+      "epsilon_init": 0.0,
+      "epsilon_min": 0.0,
+      "gamma": 0.99
+    },
+    "E": {
+      "slug": "rainbow_E_final_safe_proxy",
+      "label": "E: final-safe full Rainbow, n_step=3, NoisyNet ON, all400 + proxy reward",
+      "q_head_preset": "full_rainbow",
+      "n_step": 3,
+      "noise_std_init": 0.5,
+      "epsilon_init": 0.0,
+      "epsilon_min": 0.0,
+      "gamma": 0.99
+    }
+  },
+  "model_experiment_profile": "proxy_reward_v1",
+  "model_experiment_profile_info": {
+    "slug": "proxy_reward_v1",
+    "label": "Proxy-shaped reward: all 400 maps with tap-success and pig-like score bonuses",
+    "env": {
+      "AB_REWARD_PROFILE": "shaped_proxy_v1",
+      "AB_TRAIN_LEVEL_POOL": "all400",
+      "AB_LEVEL_BEST_SCORE_BONUS_SCALE": "0.25",
+      "AB_TAP_SCORE_DELTA_BONUS": "0.03",
+      "AB_TAP_WIN_BONUS": "0.10",
+      "AB_PIG_PROXY_SCORE_THRESHOLD": "5000",
+      "AB_PIG_PROXY_BONUS": "0.10",
+      "AB_PIG_PROXY_MAX_BONUS": "0.30"
+    }
+  },
+  "model_experiment_profiles": {
+    "baseline_compat": {
+      "slug": "baseline",
+      "label": "Baseline-compatible: filtered maps, square resize, legacy score-delta reward",
+      "env": {
+        "AB_REWARD_PROFILE": "legacy_delta",
+        "AB_TRAIN_LEVEL_POOL": "filtered"
+      }
+    },
+    "reward_fix_v1": {
+      "slug": "reward_fix_v1",
+      "label": "Reward fix: guard score resets and reward per-level best-score improvements",
+      "env": {
+        "AB_REWARD_PROFILE": "clamped_delta_best",
+        "AB_TRAIN_LEVEL_POOL": "filtered",
+        "AB_LEVEL_BEST_SCORE_BONUS_SCALE": "0.25"
+      }
+    },
+    "allmap_reward_v1": {
+      "slug": "allmap_reward_v1",
+      "label": "All-map reward run: all 400 maps with guarded score-delta reward",
+      "env": {
+        "AB_REWARD_PROFILE": "clamped_delta_best",
+        "AB_TRAIN_LEVEL_POOL": "all400",
+        "AB_LEVEL_BEST_SCORE_BONUS_SCALE": "0.25"
+      }
+    },
+    "proxy_reward_v1": {
+      "slug": "proxy_reward_v1",
+      "label": "Proxy-shaped reward: all 400 maps with tap-success and pig-like score bonuses",
+      "env": {
+        "AB_REWARD_PROFILE": "shaped_proxy_v1",
+        "AB_TRAIN_LEVEL_POOL": "all400",
+        "AB_LEVEL_BEST_SCORE_BONUS_SCALE": "0.25",
+        "AB_TAP_SCORE_DELTA_BONUS": "0.03",
+        "AB_TAP_WIN_BONUS": "0.10",
+        "AB_PIG_PROXY_SCORE_THRESHOLD": "5000",
+        "AB_PIG_PROXY_BONUS": "0.10",
+        "AB_PIG_PROXY_MAX_BONUS": "0.30"
+      }
+    }
+  },
+  "effective_ab_env": {
+    "reward_profile": "shaped_proxy_v1",
+    "image_preprocess": "square_resize",
+    "train_level_pool": "all400",
+    "level_best_score_bonus_scale": "0.25",
+    "tap_score_delta_bonus": "0.03",
+    "tap_win_bonus": "0.10",
+    "pig_proxy_score_threshold": "5000",
+    "pig_proxy_bonus": "0.10",
+    "pig_proxy_max_bonus": "0.30"
+  },
+  "model_preset": "convnext_tiny_pretrained",
+  "q_head_preset": "full_rainbow",
+  "model_preset_info": {
+    "classic_conv": {
+      "status": "implemented",
+      "type": "custom CNN stem",
+      "notes": "Original project stem. Input convention is 0..1 after env.preprocess()."
+    },
+    "convnext_tiny_pretrained": {
+      "status": "implemented",
+      "type": "Keras/TensorFlow ConvNeXtTiny ImageNet stem",
+      "notes": "Chosen current run. Keeps output shape compatible with DQN Q-head."
+    },
+    "convnext_tiny_scratch": {
+      "status": "implemented",
+      "type": "Keras/TensorFlow ConvNeXtTiny stem without ImageNet weights",
+      "notes": "Same architecture but random visual features; usually worse for limited RL data."
+    },
+    "convnext_tiny_pretrained_finetune": {
+      "status": "implemented",
+      "type": "Pretrained ConvNeXtTiny with trainable backbone",
+      "notes": "Higher capacity, slower, more overfitting/instability risk."
+    },
+    "keras_convnextv2_style_scratch": {
+      "status": "not_implemented",
+      "type": "custom Keras ConvNeXtV2-style encoder",
+      "notes": "Discussed, but not added because pretrained ConvNeXtTiny is safer."
+    },
+    "pytorch_timm_convnextv2_pretrained": {
+      "status": "not_implemented",
+      "type": "PyTorch/timm pretrained ConvNeXtV2",
+      "notes": "Dummy-tested only. Not safe for TensorFlow SavedModel evaluation path."
+    }
+  },
+  "q_head_preset_info": {
+    "dueling_dqn": {
+      "status": "implemented",
+      "type": "DoubleQNetwork dueling-style Q head",
+      "notes": "Current default; outputs scalar Q-values with shape (batch, 200)."
+    },
+    "vanilla_dqn": {
+      "status": "implemented",
+      "type": "simple dense Q head",
+      "notes": "Smaller baseline; outputs scalar Q-values with shape (batch, 200)."
+    },
+    "noisy_dueling_dqn": {
+      "status": "implemented_experimental",
+      "type": "dueling Q head using NoisyDense",
+      "notes": "Scalar-Q NoisyNet ablation. full_rainbow is the complete Rainbow preset."
+    },
+    "c51_distributional": {
+      "status": "implemented_experimental",
+      "type": "C51 distributional Q head",
+      "notes": "A/B ablation head. Dueling C51 without NoisyNet; Agent still uses true Double DQN target."
+    },
+    "full_rainbow": {
+      "status": "implemented_experimental",
+      "type": "Rainbow DQN head: dueling C51 with NoisyDense",
+      "notes": "C/D head. Dueling C51 with NoisyNet; Agent uses true Double DQN target and PER."
+    },
+    "iqn": {
+      "status": "not_implemented",
+      "type": "quantile distributional RL head",
+      "notes": "More advanced than C51; too large for the current compatibility path."
+    },
+    "fqf": {
+      "status": "not_implemented",
+      "type": "learned quantile fraction distributional RL head",
+      "notes": "More advanced than IQN; not suitable for this quick project path."
+    }
+  },
+  "rl_component_status": {
+    "DQN": {
+      "status": "implemented",
+      "notes": "Scalar-Q path remains available through dueling_dqn / vanilla_dqn presets."
+    },
+    "target_network": {
+      "status": "implemented",
+      "notes": "target_learner exists and syncs every target_sync_period."
+    },
+    "Double_DQN": {
+      "status": "implemented_for_distributional_rainbow",
+      "notes": "A/B/C/D select next action with online network and evaluate it with target network."
+    },
+    "Dueling_DQN": {
+      "status": "implemented",
+      "notes": "DoubleQNetwork splits V(state) and A(state, action)."
+    },
+    "Prioritized_Replay": {
+      "status": "implemented",
+      "notes": "ReplayMemory samples by priority and updates priorities from TD error."
+    },
+    "n_step_return": {
+      "status": "implemented",
+      "notes": "Replay supports n_step; selected run uses n_step=3."
+    },
+    "Rainbow_DQN": {
+      "status": "implemented_experimental_with_ablation_knob",
+      "notes": "A/B/C/D run matrix toggles n_step and NoisyNet; D is the closest full Rainbow run."
+    },
+    "C51": {
+      "status": "implemented_experimental",
+      "notes": "Uses 51 atoms on [-10.0, 30.0]."
+    },
+    "NoisyNet": {
+      "status": "on",
+      "notes": "Selected run uses sigma0=0.5; paper-style NoisyNet uses sigma0=0.5 and epsilon=0."
+    },
+    "R2D2": {
+      "status": "not_implemented",
+      "notes": "Sequence/LSTM code has TODOs."
+    },
+    "NGU": {
+      "status": "not_implemented",
+      "notes": "No intrinsic novelty reward yet."
+    },
+    "Agent57": {
+      "status": "not_implemented",
+      "notes": "Too large for this project path."
+    },
+    "PPO": {
+      "status": "not_implemented",
+      "notes": "Different actor-critic pipeline."
+    },
+    "SAC_TD3": {
+      "status": "not_implemented",
+      "notes": "Continuous-control methods; not natural for 200 discrete actions."
+    },
+    "DreamerV3": {
+      "status": "not_implemented",
+      "notes": "Would require a world-model rewrite."
+    },
+    "MuZero": {
+      "status": "not_implemented",
+      "notes": "Would require latent dynamics and planning/MCTS."
+    }
+  },
+  "distributional_rainbow_enabled": true,
+  "noisynet_enabled": true,
+  "full_rainbow_enabled": true,
+  "full_rainbow_config": {
+    "n_step": 3,
+    "noise_std_init": 0.5,
+    "num_atoms": 51,
+    "v_min": -10.0,
+    "v_max": 30.0,
+    "double_dqn": true,
+    "dueling": true,
+    "prioritized_replay": true,
+    "c51": true,
+    "noisynet": true,
+    "epsilon_greedy_init": 0.0,
+    "epsilon_greedy_min": 0.0
+  },
+  "current_honest_name": "E: final-safe full Rainbow, n_step=3, NoisyNet ON, all400 + proxy reward",
+  "target_direction": "ConvNeXt-based Rainbow DQN A/B/C/D ablation matrix",
+  "not_implemented_warning": "IQN/FQF, R2D2, NGU, Agent57, PPO, SAC/TD3, Dreamer, and MuZero are listed for transparency but are not active in this run."
+}

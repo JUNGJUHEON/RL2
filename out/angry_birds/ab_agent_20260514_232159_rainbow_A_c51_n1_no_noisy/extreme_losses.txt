@@ -1,0 +1,2 @@
+Here, training instances with a loss larger than 10000 times the
+10 MA loss of the most recent training cycles will be logged.

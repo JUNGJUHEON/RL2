@@ -1,0 +1,7 @@
+EvaluationIndex,LevelIndex,Score,LevelStatus,birdsRemaining,pigsRemaining,birdsAtStart,pigsAtStart, trial,levelName,playStatus,informed,novelty
+1,318,31000,Pass,2,0,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00318_1_1_2_0.xml,training,uninformed,basic
+2,16,30350,Pass,0,0,3,2, 0,./Levels/novelty_level_0/type2_win/Levels/00016_1_1_2_0.xml,training,uninformed,basic
+3,214,46190,Pass,1,0,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00214_1_1_2_0.xml,training,uninformed,basic
+4,7,26020,Pass,0,0,3,2, 0,./Levels/novelty_level_0/type2_win/Levels/00007_1_1_2_0.xml,training,uninformed,basic
+5,7,21930,Fail,0,1,3,2, 0,./Levels/novelty_level_0/type2_win/Levels/00007_1_1_2_0.xml,training,uninformed,basic
+6,20,23330,Fail,0,2,4,4, 0,./Levels/novelty_level_0/type2_win/Levels/00020_1_1_2_0.xml,training,uninformed,basic

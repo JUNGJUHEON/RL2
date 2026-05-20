@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-16"?>
+<Level width ="2">
+<Camera x="0" y="-1" minWidth="25" maxWidth="35">
+<Score highScore ="0">
+<Birds>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+</Birds>
+<Slingshot x="-10.085714285714285" y="-1.8551020408163266">
+<GameObjects>
+<Pig type="BasicMedium" material="" x="6.515714285714285" y="-2.469183673469388" rotation="358.585" />
+<Block type="novel_object_17" material="wood" x="5.413877551020409" y="-2.8526530612244896" rotation="0.103999999999985" />
+<Block type="novel_object_17" material="wood" x="4.54673469387755" y="-2.4400000000000004" rotation="0.3809999999999718" />
+<Block type="novel_object_17" material="wood" x="7.49755102040816" y="-2.438367346938776" rotation="0.10300000000000864" />
+<Pig type="BasicSmall" material="" x="8.199183673469385" y="-1.0075510204081635" rotation="357.98" />
+<Pig type="BasicSmall" material="" x="4.697551020408163" y="-1.0138775510204083" rotation="0.15300000000002" />
+<Platform type="Platform" material="" x="-10.915510204081633" y="-3.7806122448979593" rotation="62.36200000000002" scaleX="3.174603174603175" scaleY="0.6349206349206349" />
+<Platform type="Platform" material="" x="-9.548163265306123" y="-3.340816326530612" rotation="115.418" scaleX="1.5873015873015874" scaleY="0.6349206349206349" />
+<Block type="novel_object_9" material="wood" x="6.478571428571428" y="-2.9506122448979593" rotation="359.985" />
+<Block type="novel_object_9" material="wood" x="4.889795918367348" y="-0.28265306122448974" rotation="180.153" />
+<Block type="novel_object_9" material="wood" x="7.961836734693875" y="-0.2836734693877552" rotation="359.848" />
+<Block type="RectFat" material="stone" x="4.978367346938775" y="-1.826326530612245" rotation="270.2" />
+<Block type="novel_object_9" material="wood" x="4.902653061224488" y="-1.3130612244897963" rotation="180.202" />
+<Block type="novel_object_9" material="wood" x="7.966938775510201" y="-1.31265306122449" rotation="359.94" />
+<Block type="RectFat" material="ice" x="4.892448979591833" y="0.0338775510204079" rotation="0.1560000000000059" />
+<Block type="RectFat" material="ice" x="7.983673469387753" y="0.032857142857142474" rotation="179.849" />
+<Block type="novel_object_7" material="wood" x="4.7989795918367335" y="-2.8534693877551023" rotation="0.1190000000000282" />
+<Block type="novel_object_7" material="wood" x="8.117346938775508" y="-2.4387755102040813" rotation="359.919" />
+<Block type="novel_object_7" material="wood" x="5.5706122448979585" y="-0.7822448979591838" rotation="269.985" />
+<Block type="novel_object_7" material="wood" x="5.177346938775507" y="-2.4379591836734695" rotation="0.12599999999997635" />
+<Block type="novel_object_7" material="wood" x="7.736938775510204" y="-2.853265306122449" rotation="359.998" />
+<Block type="novel_object_7" material="wood" x="4.254897959183673" y="-0.7908163265306123" rotation="269.985" />
+<Block type="RectFat" material="stone" x="4.596938775510203" y="-3.2677551020408164" rotation="179.999" />
+<Block type="RectSmall" material="ice" x="4.8753061224489755" y="0.646326530612245" rotation="270.171" />
+<Block type="RectSmall" material="ice" x="7.99755102040816" y="0.6453061224489796" rotation="89.85199999999998" />
+<Block type="novel_object_11" material="wood" x="7.216326530612243" y="-0.7967346938775512" rotation="269.174" />
+<Block type="novel_object_11" material="wood" x="8.462857142857143" y="-1.8269387755102042" rotation="89.86599999999999" />
+<Block type="novel_object_11" material="wood" x="7.43469387755102" y="-0.7971428571428576" rotation="269.175" />
+<Block type="novel_object_11" material="wood" x="5.480612244897959" y="-1.8248979591836736" rotation="270.155" />
+<Block type="novel_object_11" material="wood" x="4.462040816326528" y="-1.8281632653061226" rotation="270.37" />
+<Block type="novel_object_11" material="wood" x="8.732040816326531" y="-0.7995918367346944" rotation="270.001" />
+<Block type="novel_object_11" material="wood" x="7.417551020408162" y="-1.825918367346939" rotation="90.05799999999999" />
+<Block type="novel_object_11" material="wood" x="8.513877551020407" y="-0.7993877551020407" rotation="270.006" />
+<Block type="RectFat" material="stone" x="5.42755102040816" y="-3.2675510204081633" rotation="180.035" />
+<Block type="RectFat" material="stone" x="7.928571428571427" y="-1.826326530612245" rotation="89.95400000000001" />
+<Block type="RectFat" material="stone" x="8.349999999999998" y="-3.2681632653061223" rotation="180.022" />
+<Block type="RectFat" material="stone" x="7.509795918367345" y="-3.2677551020408164" rotation="179.981" />
+<Platform type="Platform" material="" x="-10.113673469387756" y="-3.313673469387755" rotation="360.0" scaleX="1.5873015873015874" scaleY="1.5873015873015874" />
+<Block type="novel_object_17" material="wood" x="8.349999999999998" y="-2.853673469387755" rotation="0.02199999999999136" />
+</GameObjects>
+</Level>

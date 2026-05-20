@@ -1,0 +1,361 @@
+from tensorflow.keras.layers import ReLU, Convolution2D, BatchNormalization, Flatten, Dense, \
+    MaxPool2D, Concatenate, LSTM, TimeDistributed, Layer, Input
+from tensorflow.keras.initializers import GlorotNormal, VarianceScaling
+from src.agent.model.stem import StemNetwork
+
+
+class StemNetworkDense(StemNetwork):
+    def __init__(self, latent_dim):
+        super().__init__(sequential=False)
+        self.latent_dim = latent_dim
+
+    def get_functional_graph(self, input_shapes, batch_size=None):
+        input_shape_2d = input_shapes[0]
+
+        input_2d = Input(shape=input_shape_2d, name="input")
+        flat = Flatten(name="flat")(input_2d)
+        dense = Dense(self.latent_dim, activation="relu", name="dense")(flat)
+        latent = Dense(self.latent_dim, activation="relu", name="latent")(dense)
+
+        return [input_2d], latent
+
+    def get_config(self):
+        return {"latent_dim": self.latent_dim}
+
+
+class TimeConvHead(Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = Convolution2D(32, (4, 4), strides=1, padding='same', kernel_initializer=GlorotNormal,
+                                   use_bias=False, activation="relu", name="conv_1")
+        self.conv2 = Convolution2D(128, (2, 2), strides=1, padding='same', kernel_initializer=GlorotNormal,
+                                   use_bias=False, activation="relu", name="conv_2")
+        self.flat = Flatten(name='flat')
+
+    def call(self, inputs, training=None, mask=None):
+        conv1 = TimeDistributed(MaxPool2D((2, 2)))(TimeDistributed(self.conv1)(inputs))
+        conv2 = TimeDistributed(MaxPool2D((2, 2)))(TimeDistributed(self.conv2)(conv1))
+        return TimeDistributed(self.flat)(conv2)
+
+    def get_config(self):
+        return {}
+
+
+class StemNetwork2D1D(StemNetwork):
+    def __init__(self, latent_dim):
+        super().__init__(sequential=False)
+        self.latent_dim = latent_dim
+
+    def get_functional_graph(self, input_shape, batch_size=None):
+        input_shape_2d, input_shape_1d = input_shape
+
+        input_2d = Input(shape=input_shape_2d, name="input_2d")
+        input_1d = Input(shape=input_shape_1d, name="input_1d")
+
+        conv1 = Convolution2D(32, (4, 4), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_1")(input_2d)
+        pool1 = MaxPool2D((2, 2))(conv1)
+        conv2 = Convolution2D(128, (2, 2), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_2")(pool1)
+        pool2 = MaxPool2D((2, 2))(conv2)
+        flat = Flatten(name='flat')(pool2)
+
+        concat = Concatenate()([flat, input_1d])
+        latent = Dense(self.latent_dim, activation="relu", name="latent")(concat)
+
+        return [input_2d, input_1d], latent
+
+    def get_config(self):
+        return {"latent_dim": self.latent_dim}
+
+
+class StemNetwork2DSmall(StemNetwork):
+    def __init__(self, latent_dim):
+        super().__init__(sequential=False)
+        self.latent_dim = latent_dim
+
+    def get_functional_graph(self, input_shapes, batch_size=None):
+        input_shape_2d = input_shapes[0]
+
+        input = Input(shape=input_shape_2d, name="input")
+
+        conv1 = Convolution2D(32, (4, 4), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_1")(input)
+        pool1 = MaxPool2D((2, 2))(conv1)
+        conv2 = Convolution2D(128, (2, 2), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_2")(pool1)
+        pool2 = MaxPool2D((2, 2))(conv2)
+        flat = Flatten(name='flat')(pool2)
+
+        latent = Dense(self.latent_dim, activation="relu", name="latent")(flat)
+
+        return [input], latent
+
+    def get_config(self):
+        return {"latent_dim": self.latent_dim}
+
+
+class StemNetwork2DSmallNoDense(StemNetwork):
+    def __init__(self, latent_dim):
+        super().__init__(sequential=False)
+        self.latent_dim = latent_dim
+
+    def get_functional_graph(self, input_shapes, batch_size=None):
+        input_shape_2d = input_shapes[0]
+
+        input = Input(shape=input_shape_2d, name="input")
+
+        conv1 = Convolution2D(32, (4, 4), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_1")(input)
+        pool1 = MaxPool2D((2, 2))(conv1)
+        conv2 = Convolution2D(128, (2, 2), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_2")(pool1)
+        pool2 = MaxPool2D((2, 2))(conv2)
+        conv3 = Convolution2D(self.latent_dim, (5, 2), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_3")(pool2)
+        latent = Flatten(name='flat')(conv3)
+
+        return [input], latent
+
+    def get_config(self):
+        return {"latent_dim": self.latent_dim}
+
+
+class StemNetwork2D(StemNetwork):
+    def __init__(self, latent_dim, activation="relu"):
+        super().__init__(sequential=False)
+        self.latent_dim = latent_dim
+        self.activation = activation
+
+    def get_functional_graph(self, input_shapes, batch_size=None):
+        input_shape_2d = input_shapes[0]
+
+        input = Input(shape=input_shape_2d, name="input")
+
+        conv1 = Convolution2D(32, (4, 4), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_1")(input)
+        pool1 = MaxPool2D((2, 2))(conv1)
+        conv2 = Convolution2D(128, (2, 2), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_2")(pool1)
+        pool2 = MaxPool2D((2, 2))(conv2)
+        conv3 = Convolution2D(self.latent_dim, (5, 2), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_3")(pool2)
+        flat = Flatten(name='flat')(conv3)
+
+        latent = Dense(self.latent_dim, activation=self.activation, name="latent")(flat)
+
+        return [input], latent
+
+    def get_config(self):
+        return {"latent_dim": self.latent_dim,
+                "activation": self.activation}
+
+
+class StemNetwork2DLarge(StemNetwork):
+    def __init__(self, latent_dim):
+        super().__init__(sequential=False)
+        self.latent_dim = latent_dim
+
+    def get_functional_graph(self, input_shapes, batch_size=None):
+        input_shape = input_shapes[0]
+        input = Input(shape=input_shape, name="input")
+
+        conv1 = Convolution2D(32, (6, 6), strides=4, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=2),
+                              use_bias=False, name="conv_1")(input)
+        # pool1 = MaxPool2D((2, 2))(conv1)
+        conv2 = Convolution2D(64, (4, 4), strides=2, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=2),
+                              use_bias=False, name="conv_2")(conv1)
+        # pool2 = MaxPool2D((2, 2))(conv2)
+        conv3 = Convolution2D(64, (3, 3), strides=1, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=2),
+                              use_bias=False, name="conv_3")(conv2)
+        # pool3 = MaxPool2D((2, 2))(conv3)
+        conv4 = Convolution2D(self.latent_dim, (9, 6), strides=1, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=2),
+                              use_bias=False, name="conv_4")(conv3)
+        # pool4 = MaxPool2D((2, 2))(conv4)
+        flat = Flatten(name='flat')(conv4)
+        latent = Dense(self.latent_dim, activation="relu", name="latent")(flat)
+
+        return [input], latent
+
+    def get_config(self):
+        return {"latent_dim": self.latent_dim}
+
+
+class RainbowImproved(StemNetwork):
+    """Added 4th conv to Rainbow's net."""
+
+    def __init__(self, hidden_size):
+        self.hidden_size = hidden_size
+        super().__init__(sequential=False)
+
+    def get_functional_graph(self, input_shapes, batch_size=None):
+        input_shape = input_shapes[0]
+        input = Input(shape=input_shape, name="input")
+
+        conv1 = Convolution2D(32, (8, 8), strides=4, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=1),
+                              use_bias=False, name="conv_1")(input)
+        conv2 = Convolution2D(64, (4, 4), strides=2, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=1),
+                              use_bias=False, name="conv_2")(conv1)
+        conv3 = Convolution2D(64, (3, 3), strides=1, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=1),
+                              use_bias=False, name="conv_3")(conv2)
+        conv4 = Convolution2D(self.hidden_size, (7, 7), strides=1, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=1),
+                              use_bias=False, name="conv_4")(conv3)
+        flat = ReLU()(Flatten(name='flat')(conv4))
+
+        return [input], flat
+
+    def get_config(self):
+        return {"hidden_size": self.hidden_size}
+
+
+class Rainbow(StemNetwork):
+    """Stem part of the DQN used in the Rainbow paper."""
+
+    def __init__(self):
+        super().__init__(sequential=False)
+
+    def get_functional_graph(self, input_shapes, batch_size=None):
+        input_shape = input_shapes[0]
+        input = Input(shape=input_shape, name="input")
+
+        conv1 = Convolution2D(32, (8, 8), strides=4, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=2),
+                              use_bias=False, name="conv_1")(input)
+        conv2 = Convolution2D(64, (4, 4), strides=2, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=2),
+                              use_bias=False, name="conv_2")(conv1)
+        conv3 = Convolution2D(64, (3, 3), strides=1, padding='valid', activation="relu",
+                              kernel_initializer=VarianceScaling(scale=2),
+                              use_bias=False, name="conv_3")(conv2)
+        flat = Flatten(name='flat')(conv3)
+
+        return [input], flat
+
+    def get_config(self):
+        return {}
+
+
+class ConvLSTM(StemNetwork):
+    def __init__(self, latent_dim, lstm_dim, sequence_len):
+        super().__init__(sequential=True, sequence_len=sequence_len)
+        assert sequence_len >= 2
+        self.latent_dim = latent_dim
+        self.lstm_dim = lstm_dim
+
+    def get_functional_graph(self, input_shape, batch_size=None):
+        input_shape_2d, input_shape_1d = input_shape
+
+        input_2d = Input(shape=input_shape_2d, name="input_2d")
+        input_1d = Input(shape=input_shape_1d, name="input_1d")
+
+        conv1 = Convolution2D(32, (4, 4), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_1")(input_2d)
+        pool1 = MaxPool2D((2, 2))(conv1)
+        conv2 = Convolution2D(128, (2, 2), strides=1, padding='same', activation="relu",
+                              kernel_initializer=GlorotNormal,
+                              use_bias=False, name="conv_2")(pool1)
+        pool2 = MaxPool2D((2, 2))(conv2)
+        flat = Flatten(name='flat')(pool2)
+
+        concat = Concatenate()([flat, input_1d])
+        latent = Dense(self.latent_dim, activation="relu", name="latent")(concat)
+        self.hidden = LSTM(self.lstm_dim, stateful=True, return_sequences=True, name="lstm")(latent)
+
+        return [input_2d, input_1d], self.hidden
+
+    def get_config(self):
+        return {"latent_dim": self.latent_dim,
+                "lstm_dim": self.lstm_dim,
+                "sequence_len": self.sequence_len}
+
+    def get_stateful_layer_no(self):
+        return None
+
+    '''def get_cell_states(self):
+        return self.lstm.states[1].numpy()
+
+    def set_cell_states(self, states):
+        self.lstm.states[1].assign(states)
+
+    def reset_cell_states_for(self, instance_ids):
+        hidden_states = self.lstm.states[0].numpy()
+        cell_states = self.lstm.states[1].numpy()
+        hidden_states[instance_ids] = 0
+        cell_states[instance_ids] = 0
+        self.lstm.states[0].assign(hidden_states)
+        self.lstm.states[1].assign(cell_states)'''
+
+
+class Residual(Layer):
+    """The elementary part of a Residual Network."""
+
+    def __init__(self, num_channels, name, use_1x1conv=False, strides=1):
+        super().__init__()
+        self.conv1 = Convolution2D(num_channels, kernel_size=3, padding='same', strides=strides,
+                                   name=name + "_conv1", kernel_initializer=GlorotNormal)
+        self.conv2 = Convolution2D(num_channels, kernel_size=3, padding='same',
+                                   name=name + "_conv2", kernel_initializer=GlorotNormal)
+        self.bn1 = BatchNormalization(name=name + "_bn1")
+        self.bn2 = BatchNormalization(name=name + "_bn2")
+        self.skip_conv = None
+        if use_1x1conv:
+            self.skip_conv = Convolution2D(num_channels, kernel_size=1, strides=strides,
+                                           name=name + "_skip_conv", kernel_initializer=GlorotNormal)
+        else:
+            self.skip_conv = Layer()
+
+    def call(self, inputs, **kwargs):
+        x = ReLU()(self.bn1(self.conv1(inputs)))
+        x = self.bn2(self.conv2(x))
+        skip = self.skip_conv(inputs)
+        x += skip
+        return ReLU()(x)
+
+
+class ResNetBlock(Layer):
+    """Sequence of residuals."""
+
+    def __init__(self, num_channels, num_residuals, name, first_block=False, **kwargs):
+        """Constructor
+
+        :param num_channels: int
+        :param num_residuals: number of residuals in this block
+        :param name:
+        :param first_block:
+        :param kwargs:
+        """
+
+        super().__init__(name=name, **kwargs)
+
+        self.residuals = []
+
+        for i in range(num_residuals):
+            if i == 0 and not first_block:
+                self.residuals.append(Residual(num_channels, use_1x1conv=True,  # strides=2,
+                                               name=name + "_res%d" % i))
+            else:
+                self.residuals.append(Residual(num_channels, name=name + "_res%d" % i))
+
+    def call(self, x, **kwargs):
+        for residual in self.residuals:
+            x = residual(x)
+        return x

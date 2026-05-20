@@ -1,0 +1,2 @@
+EvaluationIndex,LevelIndex,InteractionIndex,HasNoveltyLikelihood,NoNoveltyLikelihood, novel object IDs,novelty level,novelty description,trial,levelName, playStatus, informed, novelty
+0,19,1,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00019_1_1_2_0.xml,training,uninformed,basic

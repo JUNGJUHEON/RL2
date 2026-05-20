@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local training outputs and checkpoints.
+out/
+
+# Science Birds runtime outputs.
+src/envs/ab/Science Birds 0.3.8/linux/Agent_noname_Port_*_Evaluation_*/
+src/envs/ab/Science Birds 0.3.8/linux/DB/
+src/envs/ab/Science Birds 0.3.8/linux/*.log
+src/envs/ab/Science Birds 0.3.8/linux/*levelscoreR_*.txt
+
+# Local editor / OS noise.
+.DS_Store

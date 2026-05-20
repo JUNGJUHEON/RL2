@@ -1,0 +1,92 @@
+The Science Birds Server is waiting for the first agent to connect
+Waiting for agent  
+New agent connected
+Starting Science Birds instance on port: 9001
+Starting new game thread with socket on port: 9001
+The agent will start on port: 9001
+Server started
+Agent connection established
+ 1 agent/s has been connected
+startng timer
+Waiting for agent  
+A Science Bird window is connected to the agent proxy on port: 9001
+assign game window to client: org.java_websocket.WebSocketImpl@725f1c8d client  -1
+Total number of levels: 400
+config msg received 
+configing 
+LOG: Update: Level Solved:  Team 2889 level 1 score:44400  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:27230  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:41260  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:18140  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:37960  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:11000  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:31000  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:30100  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:26000  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:26740  total score: 44400
+LOG: Update: Level Solved:  Team 2889 level 1 score:54560  total score: 54560
+LOG: Update: Level Solved:  Team 2889 level 1 score:22500  total score: 54560
+LOG: Update: Level Solved:  Team 2889 level 1 score:41160  total score: 54560
+LOG: Update: Level Solved:  Team 2889 level 1 score:7690  total score: 54560
+LOG: Update: Level Solved:  Team 2889 level 1 score:32160  total score: 54560
+LOG: Update: Level Solved:  Team 2889 level 1 score:55900  total score: 55900
+LOG: Update: Level Solved:  Team 2889 level 1 score:35000  total score: 55900
+LOG: Update: Level Solved:  Team 2889 level 1 score:63680  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:36660  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:32280  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:32500  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:12680  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:52340  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:30990  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:12810  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:33340  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:27650  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:15090  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:24540  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:26290  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:30120  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:27220  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:16280  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:16930  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:23610  total score: 63680
+LOG: Update: Level Solved:  Team 2889 level 1 score:125920  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:26180  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:24200  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:25500  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:20160  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:27240  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:22350  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:26200  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:31500  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:37000  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:20000  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:50360  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:20900  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:28500  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:24010  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:20500  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:8030  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:29910  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:24410  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:30490  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:23930  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:28050  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:34580  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:18110  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:31690  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:44850  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:21050  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:28400  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:8690  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:27680  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:45780  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:16000  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:29300  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:26190  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:34160  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:25830  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:30150  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:32500  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:35790  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:34020  total score: 125920
+LOG: Update: Level Solved:  Team 2889 level 1 score:34210  total score: 125920

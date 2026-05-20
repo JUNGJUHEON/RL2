@@ -1,0 +1,15 @@
+Angry Birds Evaluation Failure Analysis
+Source CSV: /home/jung/RL2/out/angry_birds/ab_agent_20260516_220759_rainbow_D_full_n3_noisy/evaluation_results.csv
+
+overall: levels=2 wins=1 win_rate=50.0% avg_score=70120 avg_shots=4.00
+
+By level type:
+  type00: levels=2 wins=1 win_rate=50.0% avg_score=70120 avg_shots=4.00
+
+By terminal tap:
+
+Lowest-score failures (top 1):
+  level=19 type=type00 score=88640 shots=5 terminal_tap= pigs=4 blocks=88 birds=BirdBlue BirdYellow BirdRed BirdWhite
+
+High-shot failures (top 1):
+  level=19 type=type00 score=88640 shots=5 actions= taps=

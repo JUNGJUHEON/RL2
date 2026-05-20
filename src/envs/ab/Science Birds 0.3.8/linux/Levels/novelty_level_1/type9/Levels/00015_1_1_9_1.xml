@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-16"?>
+<Level width ="2">
+<Camera x="0" y="-1" minWidth="25" maxWidth="35">
+<Score highScore ="0">
+<Birds>
+<Bird type="novel_object_2"/>
+<Bird type="novel_object_2"/>
+<Bird type="novel_object_2"/>
+<Bird type="novel_object_2"/>
+</Birds>
+<Slingshot x="-10.029795918367347" y="-2.518367346938775">
+<GameObjects>
+<Platform type="Platform" material="" x="2.6638775510204056" y="-3.615918367346939" rotation="225.0" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Block type="RectTiny" material="wood" x="8.093673469387753" y="-1.7189795918367348" rotation="359.942" />
+<Block type="Circle" material="wood" x="3.136530612244897" y="-1.8322448979591837" rotation="270.003" />
+<Block type="RectMedium" material="wood" x="8.113673469387756" y="-1.935918367346939" rotation="359.977" />
+<Block type="RectFat" material="wood" x="8.099795918367345" y="-2.2504081632653063" rotation="359.979" />
+<Platform type="Platform" material="" x="3.613469387755101" y="-3.605714285714286" rotation="134.999" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Platform type="Platform" material="" x="3.1304081632653045" y="-2.696530612244898" rotation="90.0" scaleX="1.5873015873015874" scaleY="1.5873015873015874" />
+<Pig type="BasicSmall" material="" x="6.76877551020408" y="-3.276530612244898" rotation="0.04199999999997317" />
+<Pig type="BasicSmall" material="" x="6.189795918367345" y="-3.2767346938775512" rotation="0.007999999999981355" />
+<Block type="Circle" material="stone" x="8.097959183673467" y="-1.2553061224489794" rotation="360.0" />
+<Block type="RectSmall" material="stone" x="7.778979591836734" y="-3.0763265306122447" rotation="89.947" />
+<Block type="RectSmall" material="stone" x="8.411224489795917" y="-3.0763265306122447" rotation="90.06799999999998" />
+<Block type="RectSmall" material="stone" x="8.087142857142858" y="-2.563265306122449" rotation="359.958" />
+</GameObjects>
+</Level>

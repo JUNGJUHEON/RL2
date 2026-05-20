@@ -1,0 +1,88 @@
+num_parallel_steps: 200000
+num_parallel_envs: 1
+policy: greedy
+optimizer: Adam
+replay_period: 4
+replay_size_multiplier: 4
+min_hist_len: 0
+target_sync_period: 500
+actor_sync_period: None
+
+alpha: 0.700000
+gamma: 0.990000
+use_mc_return: False
+stack_size: 1
+seed: 787497276
+
+STEM MODEL PARAMETERS:
+image_feature_dim: 512
+bird_embed_dim: 32
+weights: None
+pretrained_source: imagenet
+trainable_backbone: False
+dropout_rate: 0.0
+
+Q-NETWORK PARAMETERS:
+latent_v_dim: 256
+latent_a_dim: 256
+noise_std_init: 0.5
+activation: relu
+num_atoms: 51
+v_min: -10.0
+v_max: 30.0
+
+LEARNING RATE:
+init_value: 0.0003
+decay_mode: exp
+half_life_period: 100000
+minimum: 0
+
+EPSILON:
+init_value: 0.0
+decay_mode: exp
+half_life_period: 25000
+minimum: 0.0
+
+MEMORY:
+size: 100000
+state_shapes: [(128, 128, 3), (5,)]
+n_step: 3
+num_par_envs: 1
+hidden_state_shapes: None
+sequence_len: None
+sequence_shift: None
+eta: None
+
+Model: "model"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ image_input (InputLayer)    [(None, 128, 128, 3)]        0         []                            
+                                                                                                  
+ convnext_pixel_input (Lamb  (None, 128, 128, 3)          0         ['image_input[0][0]']         
+ da)                                                                                              
+                                                                                                  
+ convnext_tiny (Functional)  (None, 768)                  2782012   ['convnext_pixel_input[0][0]']
+                                                          8                                       
+                                                                                                  
+ bird_input (InputLayer)     [(None, 5)]                  0         []                            
+                                                                                                  
+ convnext_image_feature (De  (None, 512)                  393728    ['convnext_tiny[0][0]']       
+ nse)                                                                                             
+                                                                                                  
+ bird_embedding (Dense)      (None, 32)                   192       ['bird_input[0][0]']          
+                                                                                                  
+ latent (Concatenate)        (None, 549)                  0         ['convnext_image_feature[0][0]
+                                                                    ',                            
+                                                                     'bird_input[0][0]',          
+                                                                     'bird_embedding[0][0]']      
+                                                                                                  
+ distributional_dueling_Q_n  (None, 200, 51)              8748321   ['latent[0][0]']              
+ etwork (DistributionalDuel                                                                       
+ ingQNetwork)                                                                                     
+                                                                                                  
+==================================================================================================
+Total params: 36962369 (141.00 MB)
+Trainable params: 6226134 (23.75 MB)
+Non-trainable params: 30736235 (117.25 MB)
+__________________________________________________________________________________________________

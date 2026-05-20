@@ -1,0 +1,7 @@
+EvaluationIndex,LevelIndex,InteractionIndex,HasNoveltyLikelihood,NoNoveltyLikelihood, novel object IDs,novelty level,novelty description,trial,levelName, playStatus, informed, novelty
+0,140,1,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00140_1_1_2_0.xml,training,uninformed,basic
+0,140,2,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00140_1_1_2_0.xml,training,uninformed,basic
+0,140,3,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00140_1_1_2_0.xml,training,uninformed,basic
+0,140,4,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00140_1_1_2_0.xml,training,uninformed,basic
+1,140,5,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00140_1_1_2_0.xml,training,uninformed,basic
+1,212,6,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00212_1_1_2_0.xml,training,uninformed,basic

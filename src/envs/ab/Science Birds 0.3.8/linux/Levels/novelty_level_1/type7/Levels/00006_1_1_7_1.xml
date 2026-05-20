@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-16"?>
+<Level width ="2">
+<Camera x="0" y="-1" minWidth="25" maxWidth="35">
+<Score highScore ="0">
+<Birds>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+<Bird type="BirdRed"/>
+</Birds>
+<Slingshot x="-10.085918367346938" y="-0.5571428571428572">
+<GameObjects>
+<Pig type="BasicMedium" material="" x="4.464081632653063" y="-3.1083673469387754" rotation="12.790999999999997" />
+<Platform type="Platform" material="" x="-11.50530612244898" y="-3.2514285714285713" rotation="360.0" scaleX="2.2222222222222223" scaleY="0.6349206349206349" />
+<Platform type="Platform" material="" x="-10.06" y="-1.7571428571428573" rotation="360.0" scaleX="2.2222222222222223" scaleY="0.6349206349206349" />
+<Platform type="Platform" material="" x="5.371836734693876" y="0.4436734693877553" rotation="180.001" scaleX="3.174603174603175" scaleY="0.6349206349206349" />
+<Platform type="Platform" material="" x="1.904285714285713" y="-3.670816326530612" rotation="135.001" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Platform type="Platform" material="" x="9.694285714285716" y="-3.649591836734694" rotation="315.001" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Block type="novel_object_1" material="stone" x="5.966734693877552" y="2.0306122448979593" rotation="240.99099999999999" />
+<Block type="novel_object_1" material="stone" x="5.440816326530609" y="2.531632653061224" rotation="257.859" />
+<Block type="novel_object_1" material="stone" x="5.183265306122447" y="2.2844897959183674" rotation="281.464" />
+<Block type="novel_object_1" material="stone" x="4.921020408163262" y="2.016530612244897" rotation="245.022" />
+<Block type="novel_object_1" material="stone" x="5.687755102040814" y="2.2661224489795915" rotation="275.159" />
+<Pig type="BasicMedium" material="" x="6.24061224489796" y="-3.1083673469387754" rotation="0.0049999999999954525" />
+<Pig type="BasicSmall" material="" x="7.831836734693876" y="-3.2587755102040816" rotation="13.521999999999991" />
+<Pig type="BasicSmall" material="" x="8.295714285714283" y="-3.2614285714285716" rotation="25.22199999999998" />
+<Pig type="BasicSmall" material="" x="3.8514285714285705" y="-3.2587755102040816" rotation="0.011000000000024102" />
+<Pig type="BasicSmall" material="" x="6.862857142857141" y="-3.2587755102040816" rotation="0.011000000000024102" />
+<Pig type="BasicSmall" material="" x="7.385510204081633" y="-3.2573469387755103" rotation="0.009000000000014552" />
+<Pig type="BasicSmall" material="" x="3.328775510204082" y="-3.2573469387755103" rotation="0.009000000000014552" />
+<Pig type="BasicMedium" material="" x="5.394489795918368" y="-3.0085714285714285" rotation="0.004000000000019099" />
+<Block type="RectFat" material="ice" x="4.732244897959184" y="0.8342857142857136" rotation="179.959" />
+<Platform type="Platform" material="" x="-9.834081632653062" y="-2.5602040816326532" rotation="270.0" scaleX="2.857142857142857" scaleY="0.9523809523809524" />
+<Platform type="Platform" material="" x="-10.28591836734694" y="-2.5853061224489795" rotation="90.0" scaleX="2.857142857142857" scaleY="0.9523809523809524" />
+<Block type="novel_object_3" material="stone" x="5.322857142857142" y="1.24938775510204" rotation="0.045000000000015916" />
+<Block type="novel_object_3" material="stone" x="6.006734693877551" y="1.447551020408163" rotation="269.96299999999997" />
+<Block type="novel_object_3" material="stone" x="4.66" y="1.446938775510203" rotation="269.76099999999997" />
+<Block type="novel_object_3" material="stone" x="5.916938775510204" y="0.83469387755102" rotation="0.03100000000000591" />
+<Block type="novel_object_0" material="stone" x="5.415714285714284" y="1.808367346938775" rotation="257.356" />
+</GameObjects>
+</Level>

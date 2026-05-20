@@ -1,0 +1,11 @@
+모델: ab_agent_20260516_220759_rainbow_D_full_n3_noisy
+========================================
+total_levels: 2
+passed_levels: 1
+failed_levels: 1
+win_rate: 50.00
+avg_score: 70120.00
+max_score: 88640
+min_score: 51600
+std_score: 18520.00
+avg_shots: 4.00

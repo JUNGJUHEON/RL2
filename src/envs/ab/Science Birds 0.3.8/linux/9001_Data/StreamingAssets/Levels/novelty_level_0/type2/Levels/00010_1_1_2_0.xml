@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-16"?>
+<Level width ="2">
+<Camera x="0" y="-1" minWidth="25" maxWidth="35">
+<Score highScore ="0">
+<Birds>
+<Bird type="BirdYellow"/>
+<Bird type="BirdYellow"/>
+<Bird type="BirdYellow"/>
+<Bird type="BirdYellow"/>
+<Bird type="BirdYellow"/>
+</Birds>
+<Slingshot x="-9.867755102040817" y="-2.495918367346939">
+<GameObjects>
+<Platform type="Platform" material="" x="5.351224489795918" y="-3.090408163265306" rotation="269.983" scaleX="1.5873015873015874" scaleY="1.5873015873015874" />
+<Pig type="BasicSmall" material="" x="4.620612244897959" y="-3.2728571428571427" rotation="350.507" />
+<Pig type="BasicSmall" material="" x="6.6191836734693865" y="-1.4089795918367347" rotation="354.866" />
+<Platform type="Platform" material="" x="6.817142857142855" y="-2.6306122448979594" rotation="269.983" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Block type="RectFat" material="wood" x="7.347959183673471" y="1.2599999999999998" rotation="87.09699999999998" />
+<Block type="RectFat" material="wood" x="6.536530612244896" y="0.9097959183673465" rotation="29.569999999999993" />
+<Block type="RectFat" material="wood" x="7.282857142857143" y="0.6499999999999995" rotation="357.139" />
+<Block type="RectFat" material="wood" x="5.342448979591833" y="-0.5269387755102044" rotation="259.591" />
+<Block type="RectFat" material="wood" x="5.750816326530611" y="-0.6022448979591841" rotation="259.60699999999997" />
+<Block type="RectFat" material="wood" x="6.398979591836735" y="-0.6089795918367349" rotation="178.221" />
+<Block type="RectFat" material="wood" x="6.195510204081632" y="-1.2202040816326534" rotation="89.82600000000002" />
+<Platform type="Platform" material="" x="7.345714285714283" y="-1.2902040816326532" rotation="269.983" scaleX="1.5873015873015874" scaleY="1.5873015873015874" />
+<Block type="RectFat" material="wood" x="4.420204081632651" y="-2.463061224489796" rotation="171.33" />
+<Block type="RectFat" material="wood" x="5.39265306122449" y="-1.5771428571428572" rotation="349.507" />
+<Block type="RectFat" material="wood" x="5.622448979591834" y="0.04428571428571404" rotation="169.47" />
+<Block type="RectFat" material="wood" x="7.315918367346935" y="0.23285714285714265" rotation="177.134" />
+<Block type="RectFat" material="wood" x="5.12142857142857" y="-2.1761224489795916" rotation="89.82299999999998" />
+<Block type="RectFat" material="wood" x="6.2808163265306085" y="0.3210204081632648" rotation="342.992" />
+<Block type="RectFat" material="wood" x="7.03959183673469" y="-0.3695918367346942" rotation="268.224" />
+<Block type="RectFat" material="wood" x="5.472653061224488" y="-1.1730612244897962" rotation="169.557" />
+<Block type="RectFat" material="wood" x="4.463877551020406" y="-2.0493877551020407" rotation="171.31" />
+<Block type="RectFat" material="wood" x="4.7595918367346925" y="-1.4708163265306125" rotation="80.40300000000002" />
+<Block type="RectFat" material="wood" x="3.7634693877551015" y="-3.0777551020408165" rotation="90.30399999999997" />
+<Block type="RectFat" material="wood" x="4.189183673469387" y="-3.077959183673469" rotation="269.925" />
+<Block type="RectFat" material="wood" x="6.432040816326527" y="-0.1946938775510203" rotation="178.217" />
+<Platform type="Platform" material="" x="8.787755102040816" y="-2.5779591836734697" rotation="270.0" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Platform type="Platform" material="" x="8.807959183673468" y="-0.6244897959183677" rotation="270.0" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Platform type="Platform" material="" x="8.80142857142857" y="1.3053061224489788" rotation="270.0" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Platform type="Platform" material="" x="8.804285714285712" y="3.2112244897959172" rotation="270.0" scaleX="3.174603174603175" scaleY="3.174603174603175" />
+<Pig type="BasicSmall" material="" x="7.532653061224487" y="-0.5575510204081637" rotation="359.871" />
+<Pig type="BasicSmall" material="" x="5.585510204081629" y="-2.359795918367347" rotation="0.5579999999999927" />
+</GameObjects>
+</Level>

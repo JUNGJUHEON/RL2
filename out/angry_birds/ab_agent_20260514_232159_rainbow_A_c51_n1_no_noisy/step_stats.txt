@@ -1,0 +1,99 @@
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.1%[0m[1m  (스텝 100 / 200000  |  ETA 133:41:55 h)[0m
+   # Ep. | Trans. | Cyc.:     24 | 100 | 25
+   Epsilon:                   0.997
+   Score (1 MA | record):     13990.0 | 60780
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              5.4088
+   Learning rate:             0.000300
+------
+   Comp time (last 100):      241 s
+   Total comp time:           0:04:00 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.1%[0m[1m  (스텝 200 / 200000  |  ETA 117:55:31 h)[0m
+   # Ep. | Trans. | Cyc.:     50 | 200 | 50
+   Epsilon:                   0.994
+   Score (1 MA | record):     31570.0 | 60780
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              4.4086
+   Learning rate:             0.000300
+------
+   Comp time (last 100):      184 s
+   Total comp time:           0:07:04 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.1%[0m[1m  (스텝 300 / 200000  |  ETA 112:58:12 h)[0m
+   # Ep. | Trans. | Cyc.:     73 | 300 | 75
+   Epsilon:                   0.992
+   Score (1 MA | record):     21500.0 | 63680
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              3.7122
+   Learning rate:             0.000299
+------
+   Comp time (last 100):      186 s
+   Total comp time:           0:10:10 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.2%[0m[1m  (스텝 400 / 200000  |  ETA 109:37:24 h)[0m
+   # Ep. | Trans. | Cyc.:     97 | 400 | 100
+   Epsilon:                   0.989
+   Score (1 MA | record):     3260.0 | 63680
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              4.3012
+   Learning rate:             0.000299
+------
+   Comp time (last 100):      180 s
+   Total comp time:           0:13:10 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.2%[0m[1m  (스텝 500 / 200000  |  ETA 107:46:04 h)[0m
+   # Ep. | Trans. | Cyc.:     123 | 500 | 125
+   Epsilon:                   0.986
+   Score (1 MA | record):     125920.0 | 125920
+   Win-ratio (1 MA):          1.00
+   Loss (10 MA):              4.0363
+   Learning rate:             0.000299
+------
+   Comp time (last 100):      181 s
+   Total comp time:           0:16:12 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.3%[0m[1m  (스텝 600 / 200000  |  ETA 106:34:51 h)[0m
+   # Ep. | Trans. | Cyc.:     146 | 600 | 150
+   Epsilon:                   0.984
+   Score (1 MA | record):     21500.0 | 125920
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              3.8853
+   Learning rate:             0.000299
+------
+   Comp time (last 100):      182 s
+   Total comp time:           0:19:14 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.4%[0m[1m  (스텝 700 / 200000  |  ETA 105:27:38 h)[0m
+   # Ep. | Trans. | Cyc.:     172 | 700 | 175
+   Epsilon:                   0.981
+   Score (1 MA | record):     900.0 | 125920
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              2.9117
+   Learning rate:             0.000299
+------
+   Comp time (last 100):      179 s
+   Total comp time:           0:22:13 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.4%[0m[1m  (스텝 800 / 200000  |  ETA 104:48:54 h)[0m
+   # Ep. | Trans. | Cyc.:     199 | 800 | 200
+   Epsilon:                   0.978
+   Score (1 MA | record):     40220.0 | 125920
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              3.5716
+   Learning rate:             0.000298
+------
+   Comp time (last 100):      182 s
+   Total comp time:           0:25:15 h
+
+[1m진행률: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0.4%[0m[1m  (스텝 900 / 200000  |  ETA 104:14:05 h)[0m
+   # Ep. | Trans. | Cyc.:     225 | 900 | 225
+   Epsilon:                   0.975
+   Score (1 MA | record):     15680.0 | 125920
+   Win-ratio (1 MA):          0.00
+   Loss (10 MA):              3.4823
+   Learning rate:             0.000298
+------
+   Comp time (last 100):      181 s
+   Total comp time:           0:28:16 h
