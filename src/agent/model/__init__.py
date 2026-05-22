@@ -1,4 +1,10 @@
-from src.agent.model.q_network import QNetwork, DoubleQNetwork, VanillaQNetwork, DistributionalDuelingQNetwork
+from src.agent.model.q_network import (
+    QNetwork,
+    DoubleQNetwork,
+    VanillaQNetwork,
+    DistributionalDuelingQNetwork,
+    QuantileDuelingQNetwork,
+)
 from src.agent.model.stem import StemNetwork
 from src.agent.model.generic import StemNetwork2D1D, StemNetwork2DLarge, StemNetwork2D, ConvLSTM,\
     Rainbow, RainbowImproved, StemNetwork2DSmallNoDense

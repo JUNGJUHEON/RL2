@@ -29,6 +29,7 @@ class TransitionsBuffer:
         self.hidden_state_shapes = hidden_shapes
 
         self.scalar_obs = np.zeros(shape=(self.buffer_len, self.num_par_inst, 6), dtype="float32")
+        self.aux_labels = {}
 
         self.print_mem_usage()
         self.states = shapes2arrays(state_shapes, preceded_by=(self.buffer_len, self.num_par_inst),
@@ -41,18 +42,38 @@ class TransitionsBuffer:
 
         self.initial_priority = 1
 
-    def save_transitions(self, states, hidden_states, actions, scores, rewards, terminals, gamma):
+    def save_transitions(self, states, hidden_states, actions, scores, rewards, terminals, gamma,
+                         aux_labels=None):
         self.save_states(states, hidden_states)
         self.scalar_obs[self.stack_ptr, :, self.ACTIONS] = actions
         self.scalar_obs[self.stack_ptr, :, self.SCORES] = scores
         self.scalar_obs[self.stack_ptr, :, self.REWARDS] = rewards
         self.scalar_obs[self.stack_ptr, :, self.TERMINALS] = terminals
         self.scalar_obs[self.stack_ptr, :, self.PRIORITIES] = self.initial_priority
+        self.save_aux_labels(aux_labels)
 
         self.stack_ptr += 1
 
         if np.any(terminals):
             self.compute_returns_for(terminals, gamma)
+
+    def save_aux_labels(self, aux_labels=None):
+        if aux_labels is None:
+            if self.aux_labels:
+                for label_arr in self.aux_labels.values():
+                    label_arr[self.stack_ptr] = 0.0
+            return
+
+        for name, values in aux_labels.items():
+            label_values = np.asarray(values, dtype="float32")
+            if label_values.shape[0] != self.num_par_inst:
+                label_values = np.reshape(label_values, (self.num_par_inst, *label_values.shape[1:]))
+            if name not in self.aux_labels:
+                self.aux_labels[name] = np.zeros(
+                    shape=(self.buffer_len, self.num_par_inst, *label_values.shape[1:]),
+                    dtype="float32",
+                )
+            self.aux_labels[name][self.stack_ptr] = label_values
 
     def compute_returns_for(self, env_ids, gamma):
         comp_return = env_ids.copy()
@@ -114,6 +135,8 @@ class TransitionsBuffer:
         if self.saving_hidden_states:
             for hidden_comps in self.hidden_states:
                 del_first(hidden_comps, n)
+        for label_arr in self.aux_labels.values():
+            del_first(label_arr, n)
 
     def get_actions(self, trans_indices=None):
         if trans_indices is None:
@@ -149,6 +172,22 @@ class TransitionsBuffer:
         else:
             step_indices, env_indices = trans_indices
             return self.scalar_obs[step_indices, env_indices, self.TERMINALS].astype("bool")
+
+    def get_aux_labels(self, trans_indices=None, label_names=None):
+        if label_names is None:
+            label_names = list(self.aux_labels.keys())
+        if trans_indices is None:
+            return {
+                name: self.aux_labels[name][:self.stack_ptr]
+                for name in label_names
+                if name in self.aux_labels
+            }
+        step_indices, env_indices = trans_indices
+        return {
+            name: self.aux_labels[name][step_indices, env_indices]
+            for name in label_names
+            if name in self.aux_labels
+        }
 
     def get_priorities(self, trans_indices=None):
         if trans_indices is None:

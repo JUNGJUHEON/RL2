@@ -197,6 +197,7 @@ class Agent:
                  optimizer=tf.keras.optimizers.Adam(),
                  use_pretrained=False,
                  seed=None,
+                 auxiliary_heads_config=None,
                  **kwargs):  # keep kwargs for backwards compatibility
         """Constructor
         :param env: The (instantiated) environment in which the agent acts
@@ -246,6 +247,20 @@ class Agent:
         self.sequence_len = stem_network.sequence_len
         self.q_network = q_network
         self.optimizer = optimizer
+        self.auxiliary_heads_config = self._normalize_auxiliary_heads_config(auxiliary_heads_config)
+        self.auxiliary_label_names = [head["name"] for head in self.auxiliary_heads_config["heads"]]
+        self.auxiliary_label_types = [head["type"] for head in self.auxiliary_heads_config["heads"]]
+        self.auxiliary_label_weights = np.asarray(
+            [head["weight"] for head in self.auxiliary_heads_config["heads"]],
+            dtype="float32",
+        )
+        self.auxiliary_output_dim = len(self.auxiliary_label_names)
+        self.auxiliary_loss_weight = float(self.auxiliary_heads_config["loss_weight"])
+        self.auxiliary_regression_mask = tf.constant(
+            [label_type == "regression" for label_type in self.auxiliary_label_types],
+            dtype=tf.bool,
+        )
+        self.auxiliary_label_weight_tensor = tf.constant(self.auxiliary_label_weights, dtype=tf.float32)
         self.online_learner = self.init_online_learner()
         self.q_net_layer_id = np.where([isinstance(layer, QNetwork) for layer in self.online_learner.layers])[0][0]
         # log_model_graph(self.online_learner, self.stack_shapes)
@@ -273,6 +288,9 @@ class Agent:
         self.activation_probe_names = []
         self.action_counts = np.zeros(self.num_actions, dtype="int64")
         self.recent_rewards = []
+        self.convnext_update_enabled = tf.Variable(True, trainable=False, dtype=tf.bool)
+        self.convnext_gradient_scale = tf.Variable(1.0, trainable=False, dtype=tf.float32)
+        self._last_convnext_update_enabled = None
 
         self.save_config()
 
@@ -295,7 +313,20 @@ class Agent:
         q_net.set_num_actions(self.num_actions)
         q_net.set_sequential(self.sequential)
         inputs, latent = stem_net.get_functional_graph(self.stack_shapes, batch_size)
-        outputs = q_net(latent)
+        q_outputs = q_net(latent)
+        if self.uses_auxiliary_heads():
+            aux_latent = tf.keras.layers.Dense(
+                int(self.auxiliary_heads_config.get("hidden_dim", 128)),
+                activation="relu",
+                name="auxiliary_latent",
+            )(latent)
+            aux_outputs = tf.keras.layers.Dense(
+                self.auxiliary_output_dim,
+                name="auxiliary_predictions",
+            )(aux_latent)
+            outputs = [q_outputs, aux_outputs]
+        else:
+            outputs = q_outputs
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
         model.compile(loss='huber_loss', optimizer=self.optimizer)  # Huber loss equiv. to gradient clipping
         return model
@@ -315,22 +346,67 @@ class Agent:
 
         self.online_learner.load_weights(pretrained_path + "/pretrained", by_name=True)
 
-    def is_distributional(self):
+    def _normalize_auxiliary_heads_config(self, config):
+        if not config:
+            return {"enabled": False, "loss_weight": 0.0, "hidden_dim": 128, "heads": []}
+
+        heads = []
+        for head in config.get("heads", []):
+            label_type = head.get("type", "regression")
+            if label_type not in {"regression", "binary"}:
+                raise ValueError(f"Invalid auxiliary head type: {label_type!r}")
+            heads.append({
+                "name": str(head["name"]),
+                "type": label_type,
+                "weight": float(head.get("weight", 1.0)),
+            })
+
+        return {
+            "enabled": bool(config.get("enabled", bool(heads))),
+            "loss_weight": float(config.get("loss_weight", 0.05)),
+            "hidden_dim": int(config.get("hidden_dim", 128)),
+            "heads": heads,
+        }
+
+    def uses_auxiliary_heads(self):
+        return bool(self.auxiliary_heads_config.get("enabled")) and self.auxiliary_output_dim > 0
+
+    def _extract_q_output(self, model_output):
+        if isinstance(model_output, (list, tuple)):
+            return model_output[0]
+        if isinstance(model_output, dict):
+            return model_output.get("q", next(iter(model_output.values())))
+        return model_output
+
+    def _predict_q(self, keras_model, states, batch_size=None, verbose=0):
+        model_output = keras_model.predict(states, batch_size=batch_size, verbose=verbose)
+        return self._extract_q_output(model_output)
+
+    def is_c51_distributional(self):
         return hasattr(self.q_network, "num_atoms") and hasattr(self.q_network, "get_support_np")
+
+    def is_quantile_distributional(self):
+        return hasattr(self.q_network, "num_quantiles")
+
+    def is_distributional(self):
+        return self.is_c51_distributional() or self.is_quantile_distributional()
 
     def uses_noisynet(self):
         return getattr(self.q_network, "noise_std_init", 0) > 0
 
     def get_distributional_support_np(self):
-        if not self.is_distributional():
+        if not self.is_c51_distributional():
             return None
         return self.q_network.get_support_np()
 
     def distribution_to_q_values(self, distributions):
-        support = self.get_distributional_support_np()
-        if support is None:
-            return distributions
-        return np.sum(np.asarray(distributions) * support, axis=-1)
+        output = np.asarray(distributions)
+        if self.is_c51_distributional():
+            support = self.get_distributional_support_np()
+            return np.sum(output * support, axis=-1)
+        if self.is_quantile_distributional():
+            return np.mean(output, axis=-1)
+        return output
 
     def _diagnose_distributional_output(self, distributions):
         dist_np = np.asarray(distributions)
@@ -344,6 +420,65 @@ class Agent:
             "atom_probability_sums": self._diagnose_array(np.sum(dist_np, axis=-1)),
             "support": self._diagnose_array(self.get_distributional_support_np()),
         }
+
+    def _diagnose_quantile_output(self, quantiles):
+        quantile_np = np.asarray(quantiles)
+        if quantile_np.size == 0:
+            return {}
+        q_values = np.mean(quantile_np, axis=-1)
+        return {
+            "quantiles": self._diagnose_array(quantile_np),
+            "expected_q_values": self._diagnose_array(q_values),
+            "quantile_std": self._diagnose_array(np.std(quantile_np, axis=-1)),
+            "quantile_p10": self._diagnose_array(np.percentile(quantile_np, 10, axis=-1)),
+            "quantile_p90": self._diagnose_array(np.percentile(quantile_np, 90, axis=-1)),
+            "num_quantiles": int(quantile_np.shape[-1]),
+        }
+
+    def _build_auxiliary_labels(self, scores, rewards, terminals, wins, env_step_diag=None):
+        if not self.uses_auxiliary_heads():
+            return None
+
+        score_delta = np.zeros(self.num_par_envs, dtype="float32")
+        if isinstance(env_step_diag, dict) and "score_delta" in env_step_diag and self.num_par_envs == 1:
+            score_delta[0] = float(env_step_diag.get("score_delta", 0.0))
+
+        label_values = {
+            "reward_norm": np.asarray(rewards, dtype="float32").reshape(self.num_par_envs) / 10.0,
+            "score_delta_norm": score_delta / 10000.0,
+            "terminal": np.asarray(terminals, dtype="float32").reshape(self.num_par_envs),
+            "win": np.asarray(wins, dtype="float32").reshape(self.num_par_envs),
+            "positive_score_delta": (score_delta > 0).astype("float32"),
+        }
+
+        return {
+            name: label_values[name]
+            for name in self.auxiliary_label_names
+            if name in label_values
+        }
+
+    def _get_auxiliary_targets(self, trans_ids):
+        if not self.uses_auxiliary_heads():
+            return None
+        labels = self.memory.get_aux_labels(trans_ids, self.auxiliary_label_names)
+        missing = [name for name in self.auxiliary_label_names if name not in labels]
+        if missing:
+            raise KeyError(f"Missing auxiliary replay labels: {missing}")
+        return np.stack(
+            [np.asarray(labels[name], dtype="float32").reshape(len(trans_ids)) for name in self.auxiliary_label_names],
+            axis=-1,
+        ).astype("float32")
+
+    def _compute_auxiliary_loss(self, aux_targets, aux_predictions):
+        regression_errors = tf.square(aux_targets - aux_predictions)
+        binary_losses = tf.nn.sigmoid_cross_entropy_with_logits(
+            labels=aux_targets,
+            logits=aux_predictions,
+        )
+        per_label_losses = tf.where(self.auxiliary_regression_mask, regression_errors, binary_losses)
+        weighted_losses = per_label_losses * self.auxiliary_label_weight_tensor
+        normalizer = tf.maximum(tf.reduce_sum(self.auxiliary_label_weight_tensor), 1.0)
+        return tf.reduce_mean(tf.reduce_sum(weighted_losses, axis=-1) / normalizer)
 
     def _diagnose_array(self, arr, include_values=False):
         arr_np = np.asarray(arr)
@@ -476,6 +611,7 @@ class Agent:
             "double_Q_network",
             "default_Q_network",
             "distributional_dueling_Q_network",
+            "quantile_dueling_Q_network",
         ]
         outputs = []
         names = []
@@ -542,7 +678,11 @@ class Agent:
         image_proj = self._gradient_group_norm(grads, weights, ["convnext_image_feature"])
         bird = self._gradient_group_norm(grads, weights, ["bird_embedding"])
         q_network = self._gradient_group_norm(grads, weights, ["double_q_network", "default_q_network"])
-        distributional_q_network = self._gradient_group_norm(grads, weights, ["distributional_dueling_q_network"])
+        distributional_q_network = self._gradient_group_norm(
+            grads,
+            weights,
+            ["distributional_dueling_q_network", "quantile_dueling_q_network"],
+        )
 
         selected_keywords = [
             "convnext",
@@ -553,6 +693,7 @@ class Agent:
             "double_q_network",
             "default_q_network",
             "distributional_dueling_q_network",
+            "quantile_dueling_q_network",
         ]
         other_grads = []
         for grad, weight in zip(grads, weights):
@@ -603,6 +744,8 @@ class Agent:
                  diagnostics_full_period=500,
                  diagnostics_profile="full",
                  checkpoint_diagnostics=False,
+                 convnext_finetune_at_step=None,
+                 convnext_finetune_lr_scale=0.1,
                  run_metadata=None,
                  use_tqdm=True,
                  verbose=False):
@@ -652,6 +795,11 @@ class Agent:
         self.epsilon = epsilon
         self.use_mc_return = use_mc_return
         self.action_masking = action_masking
+        self.convnext_gradient_scale.assign(float(convnext_finetune_lr_scale))
+        self._update_convnext_finetune_state(
+            current_transition=int(self.stats.init_trans_no),
+            convnext_finetune_at_step=convnext_finetune_at_step,
+        )
 
         # Setup target learner (target learner == online learner if no sync period provided)
         if target_sync_period is not None:
@@ -715,6 +863,10 @@ class Agent:
                 diagnostics_period=diagnostics_period,
                 diagnostics_full_period=diagnostics_full_period,
                 diagnostics_profile=diagnostics_profile,
+                convnext_finetune_at_step=convnext_finetune_at_step,
+                convnext_finetune_lr_scale=convnext_finetune_lr_scale,
+                convnext_update_enabled=bool(self.convnext_update_enabled.numpy()),
+                auxiliary_heads_config=self.auxiliary_heads_config,
                 run_metadata=run_metadata,
                 env=env_diag,
             )
@@ -754,6 +906,8 @@ class Agent:
             self.recent_rewards.extend(np.asarray(rewards).reshape(-1).astype("float32").tolist())
             if len(self.recent_rewards) > 1000:
                 self.recent_rewards = self.recent_rewards[-1000:]
+            env_step_diag = self.env.get_last_step_diagnostics() \
+                if hasattr(self.env, "get_last_step_diagnostics") else {}
 
             if diagnostics_period is not None and diagnostics_period > 0:
                 if i == 1 or i % diagnostics_period == 0 or np.any(game_overs):
@@ -769,8 +923,6 @@ class Agent:
                             self.env.preprocess(state_stacks)
                         )
                     action0 = int(np.asarray(actions).reshape(-1)[0])
-                    env_step_diag = self.env.get_last_step_diagnostics() \
-                        if hasattr(self.env, "get_last_step_diagnostics") else {}
                     self._write_diagnostics(
                         "training_step",
                         loop_step=i,
@@ -798,8 +950,10 @@ class Agent:
                     )
 
             # Save observations (1 %)
+            auxiliary_labels = self._build_auxiliary_labels(scores, rewards, terminals, wins, env_step_diag)
             new_transitions += self.memory.memorize_observations(states, hidden_states, actions,
-                                                                 scores, rewards, terminals, gamma)
+                                                                 scores, rewards, terminals, gamma,
+                                                                 aux_labels=auxiliary_labels)
 
             # Reset state stacker for envs with true terminals (0 %)
             terminated_env_ids = np.where(terminals)[0]
@@ -848,6 +1002,10 @@ class Agent:
             # Training / replay (29 %)
             if i % replay_period == 0:
                 self.reset_noise()  # for Noisy Nets (if activated)
+                self._update_convnext_finetune_state(
+                    current_transition=done_transitions,
+                    convnext_finetune_at_step=convnext_finetune_at_step,
+                )
                 replay_size = replay_size_multiplier * new_transitions
                 if self.memory.get_num_transitions() >= min_hist_len and replay_size > 0:
                     if max_replay_size is not None and replay_size > max_replay_size:
@@ -976,7 +1134,10 @@ class Agent:
     def learn_instances(self, num_instances, gamma, epochs=1, alpha=0.7, verbose=False):
         """Uses batches of single instances to learn on."""
 
-        if self.is_distributional():
+        if self.is_quantile_distributional():
+            return self.learn_quantile_instances(num_instances, gamma=gamma, epochs=epochs,
+                                                 alpha=alpha, verbose=verbose)
+        if self.is_c51_distributional():
             return self.learn_distributional_instances(num_instances, gamma=gamma, epochs=epochs,
                                                        alpha=alpha, verbose=verbose)
 
@@ -1000,11 +1161,12 @@ class Agent:
         next_states_prep = self.env.preprocess(next_states)
 
         # Predict returns (i.e. values V(s)) for all states s
-        q_vals = self.online_learner.predict(states_prep, batch_size=self.replay_batch_size, verbose=verbose)
+        q_vals = self._predict_q(self.online_learner, states_prep, batch_size=self.replay_batch_size, verbose=verbose)
         pred_returns = np.max(q_vals, axis=1)
 
         # Predict next returns
-        next_q_vals = self.target_learner.predict(next_states_prep, batch_size=self.replay_batch_size, verbose=verbose)
+        next_q_vals = self._predict_q(self.target_learner, next_states_prep,
+                                      batch_size=self.replay_batch_size, verbose=verbose)
         pred_next_returns = np.max(next_q_vals, axis=1)
 
         # Compute (n-step or MC) return targets and temporal-difference (TD) errors (the "surprise" of the agent)
@@ -1020,7 +1182,8 @@ class Agent:
 
         # Prepare inputs and targets for fitting
         inputs = states_prep
-        targets = self.target_learner.predict(states_prep, batch_size=self.replay_batch_size, verbose=verbose)
+        targets = self._predict_q(self.target_learner, states_prep, batch_size=self.replay_batch_size,
+                                  verbose=verbose)
         targets[range(len(trans_ids)), actions] = target_returns
 
         # Prepare action mask for masking away unconsidered action
@@ -1032,6 +1195,7 @@ class Agent:
 
         # Compute sample weights
         sample_weights = compute_sample_weights(td_errs, probabilities[trans_ids], exp_len)
+        aux_targets = self._get_auxiliary_targets(trans_ids)
         self.last_learning_diagnostics = {
             "mode": "instances",
             "requested_instances": int(num_instances),
@@ -1049,13 +1213,16 @@ class Agent:
             "sample_probabilities": self._diagnose_array(probabilities[trans_ids]),
             "n_step_rewards": self._diagnose_array(n_step_rewards),
             "step_mask_true_fraction": float(np.mean(step_mask.astype("float32"))),
+            "auxiliary_heads": self.auxiliary_heads_config if self.uses_auxiliary_heads() else None,
+            "auxiliary_targets": self._diagnose_array(aux_targets) if aux_targets is not None else {},
         }
 
         # Update the online network's weights
         loss, individual_losses, predictions = self.fit(inputs, targets, epochs=epochs, verbose=verbose,
                                                         batch_size=self.replay_batch_size,
                                                         sample_weights=sample_weights,
-                                                        action_mask=action_mask)
+                                                        action_mask=action_mask,
+                                                        aux_targets=aux_targets)
         self.last_learning_diagnostics.update({
             "loss": float(loss),
             "individual_losses": self._diagnose_array(individual_losses),
@@ -1111,6 +1278,128 @@ class Agent:
         projected_dist_sum = np.maximum(projected_dist_sum, 1e-8)
         return projected_dist / projected_dist_sum
 
+    def project_quantile_targets(self, n_step_rewards, step_mask, next_action_quantiles, gamma):
+        """Builds n-step QR-DQN targets without projecting onto a fixed support."""
+        rewards = np.asarray(n_step_rewards, dtype="float32")
+        mask = np.asarray(step_mask, dtype="bool")
+        next_quantiles = np.asarray(next_action_quantiles, dtype="float32")
+        n = rewards.shape[-1]
+
+        discounts = (gamma ** np.arange(n)).astype("float32")
+        reward_mask = mask[:, :n].astype("float32")
+        discounted_rewards = rewards * discounts[None, :] * reward_mask
+        reward_returns = np.sum(discounted_rewards, axis=-1)
+        bootstrap_mask = mask[:, n].astype("float32")
+
+        return reward_returns[:, None] + bootstrap_mask[:, None] * (gamma ** n) * next_quantiles
+
+    def learn_quantile_instances(self, num_instances, gamma, epochs=1, alpha=0.7, verbose=False):
+        """QR-DQN + true Double DQN update for the Model F Rainbow preset."""
+
+        if self.sequential:
+            raise NotImplementedError("QR-Rainbow is wired for non-sequential Angry Birds states only.")
+
+        trans_ids, probabilities = self.memory.recall(num_instances, alpha)
+        if len(trans_ids) == 0:
+            self.last_learning_diagnostics = {
+                "mode": "quantile_instances",
+                "sample_count": 0,
+                "reason": "replay recall returned no transitions",
+            }
+            return 0
+
+        exp_len = self.memory.get_num_transitions()
+        states, _, actions, n_step_rewards, step_mask, next_states, _ = \
+            self.memory.get_transitions(trans_ids)
+        states_prep = self.env.preprocess(states)
+        next_states_prep = self.env.preprocess(next_states)
+
+        current_quantiles = self._predict_q(self.online_learner, states_prep,
+                                            batch_size=self.replay_batch_size, verbose=verbose)
+        current_q_vals = self.distribution_to_q_values(current_quantiles)
+        batch_ids = np.arange(len(trans_ids))
+        pred_returns = current_q_vals[batch_ids, actions]
+
+        next_online_quantiles = self._predict_q(self.online_learner, next_states_prep,
+                                                batch_size=self.replay_batch_size, verbose=verbose)
+        next_online_q_vals = self.distribution_to_q_values(next_online_quantiles)
+        best_next_actions = np.argmax(next_online_q_vals, axis=1)
+
+        next_target_quantiles = self._predict_q(self.target_learner, next_states_prep,
+                                                batch_size=self.replay_batch_size, verbose=verbose)
+        next_selected_quantiles = next_target_quantiles[batch_ids, best_next_actions]
+        target_action_quantiles = self.project_quantile_targets(
+            n_step_rewards=n_step_rewards,
+            step_mask=step_mask,
+            next_action_quantiles=next_selected_quantiles,
+            gamma=gamma,
+        )
+
+        target_returns = np.mean(target_action_quantiles, axis=1)
+        td_errs = target_returns - pred_returns
+
+        priorities = np.abs(td_errs) + 1e-6
+        self.memory.set_priorities(trans_ids, priorities)
+
+        inputs = states_prep
+        targets = np.asarray(current_quantiles, dtype="float32").copy()
+        targets[batch_ids, actions] = target_action_quantiles
+
+        action_mask = np.zeros(targets.shape[:2], dtype="float32")
+        action_mask[batch_ids, actions] = 1.0
+
+        sample_weights = compute_sample_weights(priorities, probabilities[trans_ids], exp_len)
+        aux_targets = self._get_auxiliary_targets(trans_ids)
+        self.last_learning_diagnostics = {
+            "mode": "quantile_instances",
+            "requested_instances": int(num_instances),
+            "sample_count": int(len(trans_ids)),
+            "transition_id_sample": np.asarray(trans_ids[:10]).astype("int").tolist(),
+            "actions_sample": np.asarray(actions[:10]).astype("int").tolist(),
+            "double_dqn_selected_next_actions": np.asarray(best_next_actions[:10]).astype("int").tolist(),
+            "current_quantiles": self._diagnose_quantile_output(current_quantiles),
+            "next_online_quantiles": self._diagnose_quantile_output(next_online_quantiles),
+            "next_target_quantiles": self._diagnose_quantile_output(next_target_quantiles),
+            "target_action_quantiles": self._diagnose_quantile_output(target_action_quantiles),
+            "q_values": self._diagnose_array(current_q_vals),
+            "next_online_q_values": self._diagnose_array(next_online_q_vals),
+            "pred_returns": self._diagnose_array(pred_returns),
+            "target_returns": self._diagnose_array(target_returns),
+            "td_errors": self._diagnose_array(td_errs),
+            "abs_td_errors": self._diagnose_array(np.abs(td_errs)),
+            "sample_weights": self._diagnose_array(sample_weights),
+            "sample_probabilities": self._diagnose_array(probabilities[trans_ids]),
+            "n_step_rewards": self._diagnose_array(n_step_rewards),
+            "step_mask_true_fraction": float(np.mean(step_mask.astype("float32"))),
+            "n_step": int(n_step_rewards.shape[-1]),
+            "num_quantiles": int(current_quantiles.shape[-1]),
+            "quantile_loss": "selected_action_pairwise_huber",
+            "auxiliary_heads": self.auxiliary_heads_config if self.uses_auxiliary_heads() else None,
+            "auxiliary_targets": self._diagnose_array(aux_targets) if aux_targets is not None else {},
+        }
+
+        loss, individual_losses, predictions = self.fit(inputs, targets, epochs=epochs, verbose=verbose,
+                                                        batch_size=self.replay_batch_size,
+                                                        sample_weights=sample_weights,
+                                                        action_mask=action_mask,
+                                                        aux_targets=aux_targets)
+        self.last_learning_diagnostics.update({
+            "loss": float(loss),
+            "individual_losses": self._diagnose_array(individual_losses),
+            "selected_action_losses": self._diagnose_array(individual_losses[batch_ids, actions]),
+            "predictions_after_fit": self._diagnose_quantile_output(predictions),
+            "targets": self._diagnose_quantile_output(targets),
+        })
+
+        self.stats.denote_learning_stats(loss, self.optimizer.learning_rate.numpy())
+        selected_action_losses = individual_losses[batch_ids, actions]
+        self.stats.log_extreme_losses(selected_action_losses, trans_ids, states,
+                                      self.distribution_to_q_values(predictions),
+                                      self.distribution_to_q_values(targets),
+                                      n_step_rewards, step_mask, self.env, self.memory, self.model_dir)
+
+        return len(trans_ids)
+
     def learn_distributional_instances(self, num_instances, gamma, epochs=1, alpha=0.7, verbose=False):
         """C51 + true Double DQN update for the full Rainbow preset."""
 
@@ -1132,18 +1421,19 @@ class Agent:
         states_prep = self.env.preprocess(states)
         next_states_prep = self.env.preprocess(next_states)
 
-        current_dists = self.online_learner.predict(states_prep, batch_size=self.replay_batch_size, verbose=verbose)
+        current_dists = self._predict_q(self.online_learner, states_prep,
+                                        batch_size=self.replay_batch_size, verbose=verbose)
         current_q_vals = self.distribution_to_q_values(current_dists)
         batch_ids = np.arange(len(trans_ids))
         pred_returns = current_q_vals[batch_ids, actions]
 
-        next_online_dists = self.online_learner.predict(next_states_prep, batch_size=self.replay_batch_size,
-                                                        verbose=verbose)
+        next_online_dists = self._predict_q(self.online_learner, next_states_prep,
+                                            batch_size=self.replay_batch_size, verbose=verbose)
         next_online_q_vals = self.distribution_to_q_values(next_online_dists)
         best_next_actions = np.argmax(next_online_q_vals, axis=1)
 
-        next_target_dists = self.target_learner.predict(next_states_prep, batch_size=self.replay_batch_size,
-                                                        verbose=verbose)
+        next_target_dists = self._predict_q(self.target_learner, next_states_prep,
+                                            batch_size=self.replay_batch_size, verbose=verbose)
         next_selected_dists = next_target_dists[batch_ids, best_next_actions]
         target_action_dists = self.project_distributional_targets(
             n_step_rewards=n_step_rewards,
@@ -1166,6 +1456,7 @@ class Agent:
         action_mask[batch_ids, actions] = 1.0
 
         sample_weights = compute_sample_weights(np.abs(td_errs) + 1e-6, probabilities[trans_ids], exp_len)
+        aux_targets = self._get_auxiliary_targets(trans_ids)
         self.last_learning_diagnostics = {
             "mode": "distributional_instances",
             "requested_instances": int(num_instances),
@@ -1190,12 +1481,15 @@ class Agent:
             "step_mask_true_fraction": float(np.mean(step_mask.astype("float32"))),
             "n_step": int(n_step_rewards.shape[-1]),
             "c51_loss": "cross_entropy_on_selected_action_distribution",
+            "auxiliary_heads": self.auxiliary_heads_config if self.uses_auxiliary_heads() else None,
+            "auxiliary_targets": self._diagnose_array(aux_targets) if aux_targets is not None else {},
         }
 
         loss, individual_losses, predictions = self.fit(inputs, targets, epochs=epochs, verbose=verbose,
                                                         batch_size=self.replay_batch_size,
                                                         sample_weights=sample_weights,
-                                                        action_mask=action_mask)
+                                                        action_mask=action_mask,
+                                                        aux_targets=aux_targets)
         self.last_learning_diagnostics.update({
             "loss": float(loss),
             "individual_losses": self._diagnose_array(individual_losses),
@@ -1300,7 +1594,7 @@ class Agent:
         return np.prod(trans_ids.shape)
 
     def fit(self, x, y, epochs, batch_size, sample_weights, action_mask=None, hidden_states=None,
-            seq_mask=None, verbose=False):
+            seq_mask=None, aux_targets=None, verbose=False):
         assert not self.sequential or (hidden_states is not None and seq_mask is not None)
         start = time.time()
 
@@ -1309,10 +1603,12 @@ class Agent:
         # 매 호출마다 retrace가 발생하므로 shape이 맞는 numpy 배열을 사용한다.
         if action_mask is None:
             action_mask = np.zeros_like(y, dtype="float32")  # [N, num_actions]
+        if aux_targets is None:
+            aux_targets = np.zeros((len(y), max(1, self.auxiliary_output_dim)), dtype="float32")
         if not self.sequential:
             hidden_states = np.zeros((len(y), 1), dtype="float32")  # [N, 1]
             seq_mask = np.ones(len(y), dtype="float32")              # [N]
-        train_dataset = (*x, y, action_mask, sample_weights, hidden_states, seq_mask)
+        train_dataset = (*x, y, aux_targets, action_mask, sample_weights, hidden_states, seq_mask)
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset).batch(batch_size)
         # train_dataset = train_dataset.shuffle(buffer_size=1024, seed=self.seed)
         predictions = np.zeros(y.shape)
@@ -1327,14 +1623,14 @@ class Agent:
                       ((epoch + 1), epochs, len(train_dataset)), flush=True, end="")
 
             # Iterate over the batches of the dataset.
-            for step, (*x_b, y_b, act_mask_b, sample_weights_b, hidden_b, seq_mask_b) in enumerate(train_dataset):
+            for step, (*x_b, y_b, aux_targets_b, act_mask_b, sample_weights_b, hidden_b, seq_mask_b) in enumerate(train_dataset):
                 # Train on this batch
                 if self.sequential:
                     self.online_learner.reset_states()
                     self.online_learner.stem_model.set_cell_states(hidden_b)
 
                 batch_individual_losses, batch_out, batch_gradient_stats, batch_total_loss = \
-                    self.train_step(x_b, y_b, act_mask_b, sample_weights_b, seq_mask_b)
+                    self.train_step(x_b, y_b, aux_targets_b, act_mask_b, sample_weights_b, seq_mask_b)
                 gradient_stats_sum += batch_gradient_stats.numpy()
                 gradient_stats_count += 1
 
@@ -1372,13 +1668,44 @@ class Agent:
         return train_loss, individual_losses, predictions
 
     @tf.function(reduce_retracing=True)
-    def train_step(self, x, y, act_mask, sample_weight, seq_mask):
+    def train_step(self, x, y, aux_targets, act_mask, sample_weight, seq_mask):
         with tf.GradientTape() as tape:
-            out = self.online_learner(x, training=True)
+            model_out = self.online_learner(x, training=True)
+            aux_out = None
+            if isinstance(model_out, (list, tuple)):
+                out = model_out[0]
+                aux_out = model_out[1] if len(model_out) > 1 else None
+            else:
+                out = model_out
             if y.shape.rank == 3:
-                # Distributional C51 branch: cross entropy on the selected action's atom distribution.
-                out_clipped = tf.clip_by_value(out, 1e-6, 1.0)
-                per_action_losses = -tf.reduce_sum(y * tf.math.log(out_clipped), axis=-1)
+                if self.is_quantile_distributional():
+                    # QR-DQN branch: quantile Huber loss on the selected action.
+                    pred_quantiles = tf.expand_dims(out, axis=-1)
+                    target_quantiles = tf.expand_dims(y, axis=-2)
+                    td_errors = target_quantiles - pred_quantiles
+                    abs_td_errors = tf.abs(td_errors)
+                    huber_delta = tf.constant(1.0, dtype=tf.float32)
+                    huber_losses = tf.where(
+                        abs_td_errors <= huber_delta,
+                        0.5 * tf.square(td_errors),
+                        huber_delta * (abs_td_errors - 0.5 * huber_delta),
+                    )
+                    num_quantiles = tf.shape(out)[-1]
+                    taus = (
+                        tf.cast(tf.range(num_quantiles), tf.float32) + 0.5
+                    ) / tf.cast(num_quantiles, tf.float32)
+                    taus = tf.reshape(taus, [1, 1, -1, 1])
+                    quantile_weights = tf.abs(
+                        taus - tf.cast(td_errors < 0.0, tf.float32)
+                    )
+                    per_action_losses = tf.reduce_mean(
+                        quantile_weights * huber_losses,
+                        axis=[-2, -1],
+                    )
+                else:
+                    # Distributional C51 branch: cross entropy on the selected action's atom distribution.
+                    out_clipped = tf.clip_by_value(out, 1e-6, 1.0)
+                    per_action_losses = -tf.reduce_sum(y * tf.math.log(out_clipped), axis=-1)
                 use_mask = tf.reduce_any(tf.not_equal(act_mask, 0))
                 act_mask_f = tf.cast(act_mask, tf.float32)
                 if act_mask.shape.rank == 3:
@@ -1389,7 +1716,7 @@ class Agent:
                 unmasked_losses = tf.reduce_mean(per_action_losses, axis=-1)
                 weighted_losses = tf.where(use_mask, selected_losses, unmasked_losses)
                 weighted_losses = tf.multiply(weighted_losses, sample_weight)
-                cumulated_loss = tf.reduce_mean(weighted_losses)
+                q_loss = tf.reduce_mean(weighted_losses)
             else:
                 # act_mask: action_masking=True이면 실제 마스크, False이면 모두 0인 더미 텐서
                 # tf.reduce_any로 마스크 유무를 그래프 안에서 판단 (Python 분기 제거)
@@ -1401,10 +1728,17 @@ class Agent:
                 if self.sequential:
                     seq_mask = tf.cast(seq_mask, tf.float32)
                     weighted_losses = tf.multiply(weighted_losses, seq_mask)
-                cumulated_loss = tf.reduce_mean(weighted_losses)
+                q_loss = tf.reduce_mean(weighted_losses)
+
+            if self.uses_auxiliary_heads() and aux_out is not None:
+                aux_loss = self._compute_auxiliary_loss(aux_targets, aux_out)
+                cumulated_loss = q_loss + self.auxiliary_loss_weight * aux_loss
+            else:
+                cumulated_loss = q_loss
 
         trainable_weights = self.online_learner.trainable_weights
         grads = tape.gradient(cumulated_loss, trainable_weights)
+        grads = self._gate_convnext_gradients(grads, trainable_weights)
         gradient_stats = self._summarize_gradients(grads, trainable_weights)
 
         # Compute unweighted losses
@@ -1468,9 +1802,10 @@ class Agent:
         # timer.add_time("State preprocessing", time.time() - t)
         # t = time.time()
 
-        raw_model_output = self.actor.predict(states_preprocessed,
-                                              batch_size=batch_size,
-                                              verbose=0)
+        raw_model_output = self._predict_q(self.actor,
+                                           states_preprocessed,
+                                           batch_size=batch_size,
+                                           verbose=0)
         if self.is_distributional():
             q_vals = self.distribution_to_q_values(raw_model_output)
         else:
@@ -1495,8 +1830,10 @@ class Agent:
             "nan_count": int(np.isnan(q_vals).sum()),
             "inf_count": int(np.isinf(q_vals).sum()),
         }
-        if self.is_distributional():
+        if self.is_c51_distributional():
             self.last_plan_diagnostics["c51"] = self._diagnose_distributional_output(raw_model_output)
+        elif self.is_quantile_distributional():
+            self.last_plan_diagnostics["qr_dqn"] = self._diagnose_quantile_output(raw_model_output)
 
         # timer.add_time("Actor prediction", time.time() - t)
         # t = time.time()
@@ -1520,6 +1857,44 @@ class Agent:
     def update_lr(self, current_transition):
         new_lr = self.learning_rate.get_value(current_transition)
         self.optimizer.learning_rate.assign(new_lr)
+
+    def _update_convnext_finetune_state(self, current_transition, convnext_finetune_at_step=None):
+        if convnext_finetune_at_step is None:
+            enabled = True
+        else:
+            enabled = int(current_transition) >= int(convnext_finetune_at_step)
+
+        previous = self._last_convnext_update_enabled
+        self.convnext_update_enabled.assign(bool(enabled))
+        if previous is None or bool(previous) != bool(enabled):
+            state = "enabled" if enabled else "frozen"
+            if convnext_finetune_at_step is None:
+                print_info(f"ConvNeXt backbone gradients: {state}.")
+            else:
+                print_info(
+                    f"ConvNeXt backbone gradients: {state} "
+                    f"(transition={int(current_transition)}, finetune_at={int(convnext_finetune_at_step)}, "
+                    f"lr_scale={float(self.convnext_gradient_scale.numpy()):.4g})."
+                )
+            self._last_convnext_update_enabled = bool(enabled)
+
+    def _gate_convnext_gradients(self, grads, weights):
+        scale = tf.where(
+            self.convnext_update_enabled,
+            self.convnext_gradient_scale,
+            tf.constant(0.0, dtype=tf.float32),
+        )
+        gated_grads = []
+        for grad, weight in zip(grads, weights):
+            if grad is None:
+                gated_grads.append(None)
+                continue
+            name = weight.name.lower()
+            if "convnext" in name and "convnext_image_feature" not in name:
+                gated_grads.append(tf.multiply(grad, scale))
+            else:
+                gated_grads.append(grad)
+        return gated_grads
 
     def reset_noise(self):
         models = {self.online_learner, self.target_learner, self.actor}
@@ -1640,7 +2015,8 @@ class Agent:
         q_config = self.q_network.get_config()
         agent_config = {"replay_batch_size": self.replay_batch_size,
                         "stack_size": self.stack_size,
-                        "seed": self.seed}
+                        "seed": self.seed,
+                        "auxiliary_heads_config": self.auxiliary_heads_config}
 
         config = {"stem_model_class": self.stem_network.__class__.__name__,
                   "stem_model_config": stem_config,
@@ -1721,10 +2097,12 @@ class Agent:
             tf.TensorSpec([None, 5],           tf.float32, name="bird"),
         ])
         def serving_fn(image, bird):
-            output = model([image, bird], training=False)
-            if self.is_distributional():
+            output = self._extract_q_output(model([image, bird], training=False))
+            if self.is_c51_distributional():
                 support = tf.constant(self.get_distributional_support_np(), dtype=tf.float32)
                 return tf.reduce_sum(output * support, axis=-1, name="expected_q_values")
+            if self.is_quantile_distributional():
+                return tf.reduce_mean(output, axis=-1, name="expected_q_values")
             return output
 
         try:
@@ -1792,13 +2170,19 @@ def continue_practice(model_name: str,
                       env_type: type(ParallelEnvironment),
                       num_par_envs: int = None,
                       checkpoint_no: int = None,
+                      stem_config_override: dict = None,
                       **training_parameters_override):
     # Restore agent and training parameters
     agent = restore(model_name=model_name,
                     env_type=env_type,
                     num_par_envs=num_par_envs,
-                    checkpoint_no=checkpoint_no)
+                    checkpoint_no=checkpoint_no,
+                    stem_config_override=stem_config_override)
     training_parameters = restore_training_parameters(model_name=model_name, env_type=env_type)
+
+    target_parallel_steps_override = training_parameters_override.pop("num_parallel_steps", None)
+    if target_parallel_steps_override is not None:
+        training_parameters["num_parallel_steps"] = int(target_parallel_steps_override)
 
     # Override training parameters.  training_config.json is rewritten at the
     # start of every practice() call, so on resume it can contain a remaining
@@ -1889,7 +2273,8 @@ def _trim_stats_to_transition(stats: Statistics, max_transition: int):
 def restore(model_name: str,
             env_type: type(ParallelEnvironment),
             num_par_envs: int = None,
-            checkpoint_no: int = None):
+            checkpoint_no: int = None,
+            stem_config_override: dict = None):
     """Loads the most recently saved checkpoint of the specified model."""
     model_dir = get_model_dir(env_type, model_name)
 
@@ -1905,6 +2290,8 @@ def restore(model_name: str,
 
     stem_class = get_class_from_name(config["stem_model_class"])
     stem_config = config["stem_model_config"]
+    if stem_config_override:
+        stem_config.update(stem_config_override)
     q_class = get_class_from_name(config["q_network_class"])
     q_config = config["q_network_config"]
     env_config = config["env_config"]

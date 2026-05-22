@@ -45,6 +45,14 @@ SHOT_PENALTY = 0.05
 USE_REWARD_CLIP = False
 REWARD_CLIP_MIN = -5.0
 REWARD_CLIP_MAX = 10.0
+REWARD_PROFILE = os.environ.get("AB_REWARD_PROFILE", "legacy_delta").lower()
+TRAIN_LEVEL_POOL = os.environ.get("AB_TRAIN_LEVEL_POOL", "filtered").lower()
+LEVEL_BEST_SCORE_BONUS_SCALE = float(os.environ.get("AB_LEVEL_BEST_SCORE_BONUS_SCALE", "0.0"))
+TAP_SCORE_DELTA_BONUS = float(os.environ.get("AB_TAP_SCORE_DELTA_BONUS", "0.0"))
+TAP_WIN_BONUS = float(os.environ.get("AB_TAP_WIN_BONUS", "0.0"))
+PIG_PROXY_SCORE_THRESHOLD = int(os.environ.get("AB_PIG_PROXY_SCORE_THRESHOLD", "5000"))
+PIG_PROXY_BONUS = float(os.environ.get("AB_PIG_PROXY_BONUS", "0.0"))
+PIG_PROXY_MAX_BONUS = float(os.environ.get("AB_PIG_PROXY_MAX_BONUS", "0.0"))
 
 TOTAL_LEVEL_NUMBER = 1300  # non-novelty levels
 LIST_OF_VALIDATION_LEVELS = []
@@ -207,6 +215,18 @@ FILTERED_TRAIN_LEVELS: list = sorted(
     + list(range(201, 201 + _n_type01))
     + list(range(301, 301 + _n_type13))
 )
+ALL_400_TRAIN_LEVELS: list = list(range(1, 401))
+
+
+def _selected_train_levels(actual_level_count=None) -> list:
+    if TRAIN_LEVEL_POOL in {"all400", "all_400", "all"}:
+        levels = list(ALL_400_TRAIN_LEVELS)
+    else:
+        levels = list(FILTERED_TRAIN_LEVELS)
+
+    if actual_level_count is not None and actual_level_count > 0:
+        levels = [level for level in levels if level <= int(actual_level_count)]
+    return levels
 
 
 def angle_to_vector(alpha):
@@ -363,7 +383,7 @@ class AngryBirds(ParallelEnvironment):
 
         self.validation_levels = []
         self.demo_levels = []
-        self.train_levels = list(FILTERED_TRAIN_LEVELS)  # setup_connections()에서 재설정될 수 있음
+        self.train_levels = _selected_train_levels()  # setup_connections()에서 재설정될 수 있음
         self.mode = "train"  # level selection mode: training, testing, validation, demo
 
         # 새 종류 추적
@@ -371,6 +391,7 @@ class AngryBirds(ParallelEnvironment):
         self.current_shot_idx    = 0    # 다음에 발사할 새의 인덱스
         self.current_level       = None
         self.last_step_info      = {}
+        self.level_best_scores   = {}
 
         self.run_framework()
         # Linux 빌드: game_playing_interface.jar가 9001.x86_64를 직접 실행한다.
@@ -525,12 +546,11 @@ class AngryBirds(ParallelEnvironment):
             actual_levels = self.comm_interface.get_number_of_levels()
             print(f"  실제 레벨 수: {actual_levels}")
             if actual_levels > 0:
-                # Use the filtered 200-level pool, not all levels the game reports
-                self.train_levels = list(FILTERED_TRAIN_LEVELS)
-                print(f"  Linux 훈련 레벨: {len(self.train_levels)}개 필터링 레벨 "
-                      f"(게임 전체={actual_levels})")
+                self.train_levels = _selected_train_levels(actual_levels)
+                print(f"  Linux 훈련 레벨: {len(self.train_levels)}개 "
+                      f"(pool={TRAIN_LEVEL_POOL}, 게임 전체={actual_levels})")
         elif level_count > 0:
-            self.train_levels = list(range(1, level_count + 1))
+            self.train_levels = _selected_train_levels(level_count)
 
         # port 2006 observer: Linux 버전 jar는 observer 서버를 열지 않음.
         if not sys.platform.startswith("linux"):
@@ -636,32 +656,64 @@ class AngryBirds(ParallelEnvironment):
         game_over = won or lost
 
         # ── Reward ────────────────────────────────────────────
-        # ORIGINAL:
-        # reward = score2reward(score)   # 점수 기반 기본 보상
-        # if won:
-        #     reward += 5.0             # 레벨 클리어 보너스
-        # elif lost:
-        #     reward -= 0.5             # 실패 페널티 (탐험 유도)
-
-        # UPDATED: score-delta reward.  This is the only changed behavior in
-        # the environment wrapper; observation/action/server interaction stays
-        # untouched for final-evaluation compatibility.
-        score_after = int(score[0])
+        # Profiles are train-only shaping. Observations/actions/server protocol
+        # stay unchanged for final-evaluation compatibility.
+        score_after_raw = int(score[0])
+        score_delta_raw = score_after_raw - score_before
+        score_regression_guarded = False
+        if REWARD_PROFILE in {"clamped_delta_best", "shaped_proxy_v1"} and score_delta_raw < 0:
+            score_after = score_before
+            score_regression_guarded = True
+        else:
+            score_after = score_after_raw
         score_delta = score_after - score_before
         score_reward = score_delta / float(SCORE_NORMALIZATION)
         win_bonus = WIN_BONUS if won else 0.0
         loss_penalty = LOSS_PENALTY if lost else 0.0
         shot_penalty = SHOT_PENALTY
-        reward = np.array([score_reward], dtype="float32")
-        if won:
-            reward += WIN_BONUS
-        if lost:
-            reward -= LOSS_PENALTY
-        reward -= SHOT_PENALTY
+
+        best_score_before = int(self.level_best_scores.get(self.current_level, 0))
+        best_score_improvement = max(0, score_after - best_score_before)
+        best_score_bonus = 0.0
+        if REWARD_PROFILE in {"clamped_delta_best", "shaped_proxy_v1"} and best_score_improvement > 0:
+            best_score_bonus = (
+                best_score_improvement / float(SCORE_NORMALIZATION)
+            ) * LEVEL_BEST_SCORE_BONUS_SCALE
+
+        tap_score_bonus = 0.0
+        tap_win_bonus = 0.0
+        pig_proxy_units = 0
+        pig_proxy_bonus = 0.0
+        proxy_bonus = 0.0
+        if REWARD_PROFILE == "shaped_proxy_v1":
+            tap_score_bonus = TAP_SCORE_DELTA_BONUS if score_delta > 0 else 0.0
+            tap_win_bonus = TAP_WIN_BONUS if won else 0.0
+            if PIG_PROXY_SCORE_THRESHOLD > 0 and score_delta > 0:
+                pig_proxy_units = int(score_delta // PIG_PROXY_SCORE_THRESHOLD)
+                pig_proxy_bonus = min(PIG_PROXY_MAX_BONUS, pig_proxy_units * PIG_PROXY_BONUS)
+            proxy_bonus = tap_score_bonus + tap_win_bonus + pig_proxy_bonus
+
+        reward_value = (
+            score_reward
+            + win_bonus
+            - loss_penalty
+            - shot_penalty
+            + best_score_bonus
+            + proxy_bonus
+        )
+        reward = np.array([reward_value], dtype="float32")
         if USE_REWARD_CLIP:
             reward = np.clip(reward, REWARD_CLIP_MIN, REWARD_CLIP_MAX)
 
+        if self.current_level is not None:
+            self.level_best_scores[self.current_level] = max(
+                best_score_before,
+                int(score_after_raw),
+                int(score_after),
+            )
+
         self.last_step_info = {
+            "reward_profile": REWARD_PROFILE,
             "level": self.current_level,
             "shot_idx": int(self.current_shot_idx),
             "action": action_idx,
@@ -669,11 +721,23 @@ class AngryBirds(ParallelEnvironment):
             "tap_ms": int(tap_time),
             "score_before": score_before,
             "score_after": score_after,
+            "score_after_raw": score_after_raw,
             "score_delta": score_delta,
+            "score_delta_raw": score_delta_raw,
+            "score_regression_guarded": bool(score_regression_guarded),
             "score_reward": float(score_reward),
             "win_bonus": float(win_bonus),
             "loss_penalty": float(loss_penalty),
             "shot_penalty": float(shot_penalty),
+            "best_score_before": int(best_score_before),
+            "best_score_after": int(self.level_best_scores.get(self.current_level, best_score_before)),
+            "best_score_improvement": int(best_score_improvement),
+            "best_score_bonus": float(best_score_bonus),
+            "tap_score_bonus": float(tap_score_bonus),
+            "tap_win_bonus": float(tap_win_bonus),
+            "pig_proxy_units": int(pig_proxy_units),
+            "pig_proxy_bonus": float(pig_proxy_bonus),
+            "proxy_bonus": float(proxy_bonus),
             "final_reward": float(reward[0]),
             "won": bool(won),
             "lost": bool(lost),
@@ -852,13 +916,21 @@ class AngryBirds(ParallelEnvironment):
             "maximum_tap_time": MAXIMUM_TAP_TIME,
             "phi": PHI,
             "psi": PSI,
+            "train_level_pool": TRAIN_LEVEL_POOL,
             "num_train_levels": len(self.train_levels),
             "train_levels": list(map(int, self.train_levels)),
             "reward": {
+                "reward_profile": REWARD_PROFILE,
                 "score_normalization": SCORE_NORMALIZATION,
                 "win_bonus": WIN_BONUS,
                 "loss_penalty": LOSS_PENALTY,
                 "shot_penalty": SHOT_PENALTY,
+                "level_best_score_bonus_scale": LEVEL_BEST_SCORE_BONUS_SCALE,
+                "tap_score_delta_bonus": TAP_SCORE_DELTA_BONUS,
+                "tap_win_bonus": TAP_WIN_BONUS,
+                "pig_proxy_score_threshold": PIG_PROXY_SCORE_THRESHOLD,
+                "pig_proxy_bonus": PIG_PROXY_BONUS,
+                "pig_proxy_max_bonus": PIG_PROXY_MAX_BONUS,
                 "use_reward_clip": USE_REWARD_CLIP,
                 "reward_clip_min": REWARD_CLIP_MIN,
                 "reward_clip_max": REWARD_CLIP_MAX,

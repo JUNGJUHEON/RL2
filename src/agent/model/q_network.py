@@ -221,6 +221,99 @@ class DistributionalDuelingQNetwork(QNetwork):
             self.a.set_noisy(active)
 
 
+class QuantileDuelingQNetwork(QNetwork):
+    """Dueling QR-DQN head for Rainbow-style DQN.
+
+    The layer returns raw quantile values with shape
+    (batch, num_actions, num_quantiles), or
+    (batch, time, num_actions, num_quantiles) for sequential stems. Expected
+    Q-values are the mean over the quantile axis.
+    """
+
+    def __init__(self, latent_v_dim=256, latent_a_dim=256, noise_std_init=0.5,
+                 activation="relu", num_quantiles=51):
+        super().__init__(name="quantile_dueling_Q_network")
+        self.v_h_size = latent_v_dim
+        self.a_h_size = latent_a_dim
+        self.noise_std_init = noise_std_init
+        self.activation = activation
+        self.num_quantiles = num_quantiles
+        self.v_h = None
+        self.v = None
+        self.a_h = None
+        self.a = None
+
+    def build(self, input_shape=None):
+        self.check_initialization()
+
+        if self.v_h_size is not None:
+            if self.noise_std_init == 0:
+                self.v_h = Dense(self.v_h_size, name='latent_V', activation=self.activation)
+            else:
+                self.v_h = NoisyDense(self.v_h_size, std_init=self.noise_std_init,
+                                      name='latent_V', activation=self.activation)
+        else:
+            self.v_h = Layer()
+
+        if self.noise_std_init == 0:
+            self.v = Dense(self.num_quantiles, name='V_quantiles')
+        else:
+            self.v = NoisyDense(self.num_quantiles, self.noise_std_init, name='V_quantiles')
+
+        if self.a_h_size is not None:
+            if self.noise_std_init == 0:
+                self.a_h = Dense(self.a_h_size, name='latent_A', activation=self.activation)
+            else:
+                self.a_h = NoisyDense(self.a_h_size, std_init=self.noise_std_init,
+                                      name='latent_A', activation=self.activation)
+        else:
+            self.a_h = Layer()
+
+        action_quantile_count = self.num_actions * self.num_quantiles
+        if self.noise_std_init == 0:
+            self.a = Dense(action_quantile_count, name='A_quantiles')
+        else:
+            self.a = NoisyDense(action_quantile_count, self.noise_std_init, name='A_quantiles')
+
+        super(QuantileDuelingQNetwork, self).build(input_shape)
+
+    def get_config(self):
+        config = {"latent_v_dim": self.v_h_size,
+                  "latent_a_dim": self.a_h_size,
+                  "noise_std_init": self.noise_std_init,
+                  "activation": self.activation,
+                  "num_quantiles": self.num_quantiles}
+        return config
+
+    def call(self, inputs, training=False, mask=None):
+        v_quantiles_flat = self.v(self.v_h(inputs))
+        a_quantiles_flat = self.a(self.a_h(inputs))
+
+        batch_shape = tf.shape(a_quantiles_flat)[:-1]
+        v_shape = tf.concat([batch_shape, [1, self.num_quantiles]], axis=0)
+        a_shape = tf.concat([batch_shape, [self.num_actions, self.num_quantiles]], axis=0)
+
+        v_quantiles = tf.reshape(v_quantiles_flat, v_shape)
+        a_quantiles = tf.reshape(a_quantiles_flat, a_shape)
+        a_avg = tf.reduce_mean(a_quantiles, axis=-2, keepdims=True, name='A_quantile_mean')
+
+        return v_quantiles + a_quantiles - a_avg
+
+    def reset_noise(self):
+        if self.noise_std_init > 0:
+            self.v_h.reset_noise()
+            self.v.reset_noise()
+            self.a_h.reset_noise()
+            self.a.reset_noise()
+
+    def set_noisy(self, active):
+        if self.noise_std_init > 0:
+            self.v_h.set_noisy(active)
+            self.v.set_noisy(active)
+            self.a_h.set_noisy(active)
+            self.a.set_noisy(active)
+
+
 class VanillaQNetwork(QNetwork):
     def __init__(self):
         super().__init__(name="default_Q_network")

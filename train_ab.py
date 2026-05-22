@@ -20,6 +20,20 @@ def _env_int_or_none(name: str, default=None):
     return int(raw)
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return float(default)
+    return float(raw)
+
+
+def _env_bool(name: str, default=False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return bool(default)
+    return str(raw).lower() in {"1", "true", "yes", "on"}
+
+
 # ─────────────────────────────────────────────────────────────
 # 하드웨어 설정 (GPU 있으면 True, 없으면 False)
 # ─────────────────────────────────────────────────────────────
@@ -49,6 +63,8 @@ MODE = _env_str("AB_MODE", "new")          # "new"      : 처음부터 새로 �
 # 특정 run을 쓰려면 폴더 이름을 직접 입력하세요.
 RESUME_MODEL = _env_str("AB_RESUME_MODEL", "auto")
 RESUME_CHECKPOINT_NO = _env_int_or_none("AB_RESUME_CHECKPOINT_NO")  # None = 가장 최신 체크포인트 자동 선택
+RESUME_TARGET_STEPS = _env_int_or_none("AB_RESUME_TARGET_STEPS")
+RESTORE_CONVNEXT_TRAINABLE_BACKBONE = os.environ.get("AB_RESTORE_CONVNEXT_TRAINABLE_BACKBONE")
 
 # evaluate 모드 옵션: None 이면 가장 최신 체크포인트 자동 선택
 # 특정 step의 체크포인트를 쓰려면 숫자로 지정 (예: 25000)
@@ -118,13 +134,15 @@ MODEL_PRESET = _env_str("AB_MODEL_PRESET", "convnext_tiny_pretrained")
 CONVNEXT_TRAINABLE_BACKBONE = _env_str("AB_CONVNEXT_TRAINABLE_BACKBONE", "0").lower() in {
     "1", "true", "yes", "on"
 }
+CONVNEXT_FINETUNE_AT_STEP = _env_int_or_none("AB_CONVNEXT_FINETUNE_AT_STEP", 50000)
+CONVNEXT_FINETUNE_LR_SCALE = _env_float("AB_CONVNEXT_FINETUNE_LR_SCALE", 0.1)
 
-# Rainbow A/B/C/D/E experiment knob.
-# E is the final-safe project run: full Rainbow plus train-only proxy reward,
-# while keeping the original action/observation contract.
-RAINBOW_RUN_VARIANT = _env_str("AB_RAINBOW_RUN_VARIANT", "E")
+# Rainbow A/B/C/D/E/F experiment knob.
+# F_base is QR-Rainbow plus train-only proxy reward and ConvNeXt backbone
+# gradient unfreezing at 50k. F_aux adds train-only auxiliary heads.
+RAINBOW_RUN_VARIANT = _env_str("AB_RAINBOW_RUN_VARIANT", "F_base")
 
-TRAINING_SIZE_PRESET = _env_str("AB_TRAINING_SIZE_PRESET", "full")
+TRAINING_SIZE_PRESET = _env_str("AB_TRAINING_SIZE_PRESET", "f100")
 TRAINING_SIZE_PRESETS = {
     "smoke": {
         "num_parallel_steps": 5000,
@@ -149,6 +167,12 @@ TRAINING_SIZE_PRESETS = {
         "memory_size": 100000,
         "replay_batch_size": 32,
         "notes": "First serious full-performance run for RTX 4060 Ti class hardware.",
+    },
+    "f100": {
+        "num_parallel_steps": 100000,
+        "memory_size": 100000,
+        "replay_batch_size": 32,
+        "notes": "Model F target: 100k steps, 100k replay, batch 32.",
     },
 }
 
@@ -235,6 +259,13 @@ print(
     f"batch={SELECTED_TRAINING_SIZE['replay_batch_size']})"
 )
 
+LEARNING_RATE_INIT = _env_float("AB_LEARNING_RATE_INIT", 0.0003)
+LEARNING_RATE_HALF_LIFE = _env_int_or_none("AB_LEARNING_RATE_HALF_LIFE", 100000)
+LEARNING_RATE_MIN = _env_float("AB_LEARNING_RATE_MIN", 0.0)
+RESUME_LEARNING_RATE_INIT = os.environ.get("AB_RESUME_LEARNING_RATE_INIT")
+RESUME_LEARNING_RATE_HALF_LIFE = _env_int_or_none("AB_RESUME_LEARNING_RATE_HALF_LIFE", LEARNING_RATE_HALF_LIFE)
+RESUME_LEARNING_RATE_MIN = _env_float("AB_RESUME_LEARNING_RATE_MIN", LEARNING_RATE_MIN)
+
 RAINBOW_RUN_VARIANTS = {
     "A": {
         "slug": "rainbow_A_c51_n1_no_noisy",
@@ -286,6 +317,42 @@ RAINBOW_RUN_VARIANTS = {
         "epsilon_min": 0.0,
         "gamma": 0.99,
     },
+    "F": {
+        "slug": "rainbow_F_base_qr_n3_noisy_eps_finetune50k",
+        "label": "F_base alias: QR-Rainbow, n_step=3, NoisyNet ON, epsilon 0.05->0.01, ConvNeXt fine-tune at 50k",
+        "q_head_preset": "qr_rainbow",
+        "n_step": 3,
+        "noise_std_init": 0.5,
+        "epsilon_init": 0.05,
+        "epsilon_min": 0.01,
+        "gamma": 0.99,
+        "convnext_finetune": True,
+        "auxiliary_heads": False,
+    },
+    "F_base": {
+        "slug": "rainbow_F_base_qr_n3_noisy_eps_finetune50k",
+        "label": "F_base: QR-Rainbow, n_step=3, NoisyNet ON, epsilon 0.05->0.01, ConvNeXt fine-tune at 50k",
+        "q_head_preset": "qr_rainbow",
+        "n_step": 3,
+        "noise_std_init": 0.5,
+        "epsilon_init": 0.05,
+        "epsilon_min": 0.01,
+        "gamma": 0.99,
+        "convnext_finetune": True,
+        "auxiliary_heads": False,
+    },
+    "F_aux": {
+        "slug": "rainbow_F_aux_qr_n3_noisy_eps_finetune50k",
+        "label": "F_aux: F_base plus train-only auxiliary outcome heads",
+        "q_head_preset": "qr_rainbow",
+        "n_step": 3,
+        "noise_std_init": 0.5,
+        "epsilon_init": 0.05,
+        "epsilon_min": 0.01,
+        "gamma": 0.99,
+        "convnext_finetune": True,
+        "auxiliary_heads": True,
+    },
 }
 
 if RAINBOW_RUN_VARIANT not in RAINBOW_RUN_VARIANTS:
@@ -301,11 +368,31 @@ Q_HEAD_PRESET = SELECTED_RAINBOW_RUN["q_head_preset"]
 FULL_RAINBOW_N_STEP = SELECTED_RAINBOW_RUN["n_step"]
 FULL_RAINBOW_NOISE_STD_INIT = SELECTED_RAINBOW_RUN["noise_std_init"]
 FULL_RAINBOW_NUM_ATOMS = 51
+FULL_RAINBOW_NUM_QUANTILES = int(_env_str("AB_QR_NUM_QUANTILES", "51"))
 FULL_RAINBOW_V_MIN = -10.0
 FULL_RAINBOW_V_MAX = 30.0
-USE_DISTRIBUTIONAL_RAINBOW = Q_HEAD_PRESET in ("c51_distributional", "full_rainbow")
+USE_DISTRIBUTIONAL_RAINBOW = Q_HEAD_PRESET in ("c51_distributional", "full_rainbow", "qr_rainbow")
 USE_NOISYNET = FULL_RAINBOW_NOISE_STD_INIT > 0
 USE_FULL_RAINBOW = USE_DISTRIBUTIONAL_RAINBOW and USE_NOISYNET and FULL_RAINBOW_N_STEP >= 3
+USE_QR_RAINBOW = Q_HEAD_PRESET == "qr_rainbow"
+EFFECTIVE_CONVNEXT_TRAINABLE_BACKBONE = (
+    CONVNEXT_TRAINABLE_BACKBONE or
+    (SELECTED_RAINBOW_RUN.get("convnext_finetune", False) and CONVNEXT_FINETUNE_AT_STEP is not None)
+)
+AUXILIARY_HEADS_CONFIG = None
+if SELECTED_RAINBOW_RUN.get("auxiliary_heads", False):
+    AUXILIARY_HEADS_CONFIG = {
+        "enabled": True,
+        "loss_weight": _env_float("AB_AUXILIARY_LOSS_WEIGHT", 0.05),
+        "hidden_dim": _env_int_or_none("AB_AUXILIARY_HIDDEN_DIM", 128),
+        "heads": [
+            {"name": "reward_norm", "type": "regression", "weight": 0.5},
+            {"name": "score_delta_norm", "type": "regression", "weight": 1.0},
+            {"name": "terminal", "type": "binary", "weight": 0.5},
+            {"name": "win", "type": "binary", "weight": 1.0},
+            {"name": "positive_score_delta", "type": "binary", "weight": 0.5},
+        ],
+    }
 
 MODEL_PRESET_INFO = {
     "classic_conv": {
@@ -366,10 +453,15 @@ Q_HEAD_PRESET_INFO = {
         "type": "Rainbow DQN head: dueling C51 with NoisyDense",
         "notes": "C/D head. Dueling C51 with NoisyNet; Agent uses true Double DQN target and PER.",
     },
+    "qr_rainbow": {
+        "status": "implemented_experimental",
+        "type": "QR-DQN Rainbow head: dueling quantile regression with NoisyDense",
+        "notes": "Model F head. Outputs quantile values; SavedModel exports expected Q-values for evaluator compatibility.",
+    },
     "iqn": {
         "status": "not_implemented",
-        "type": "quantile distributional RL head",
-        "notes": "More advanced than C51; too large for the current compatibility path.",
+        "type": "implicit quantile network distributional RL head",
+        "notes": "More advanced than QR-DQN; still not wired for this compatibility path.",
     },
     "fqf": {
         "status": "not_implemented",
@@ -411,6 +503,10 @@ RL_COMPONENT_STATUS = {
         "status": "implemented_experimental",
         "notes": f"Uses {FULL_RAINBOW_NUM_ATOMS} atoms on [{FULL_RAINBOW_V_MIN}, {FULL_RAINBOW_V_MAX}].",
     },
+    "QR_DQN": {
+        "status": "implemented_experimental" if USE_QR_RAINBOW else "available_not_selected",
+        "notes": f"Uses {FULL_RAINBOW_NUM_QUANTILES} quantiles and exports mean Q-values for the existing evaluator.",
+    },
     "NoisyNet": {
         "status": "on" if USE_NOISYNET else "off_for_selected_ablation",
         "notes": f"Selected run uses sigma0={FULL_RAINBOW_NOISE_STD_INIT}; paper-style NoisyNet uses sigma0=0.5 and epsilon=0.",
@@ -434,7 +530,7 @@ def build_stem_network(preset: str):
             image_feature_dim=512,
             bird_embed_dim=32,
             weights="imagenet",
-            trainable_backbone=CONVNEXT_TRAINABLE_BACKBONE,
+            trainable_backbone=EFFECTIVE_CONVNEXT_TRAINABLE_BACKBONE,
             dropout_rate=0.0,
         )
     if preset == "convnext_tiny_scratch":
@@ -493,6 +589,14 @@ def build_q_network(preset: str):
             v_min=FULL_RAINBOW_V_MIN,
             v_max=FULL_RAINBOW_V_MAX,
         )
+    if preset == "qr_rainbow":
+        return model.q_network.QuantileDuelingQNetwork(
+            latent_v_dim=256,
+            latent_a_dim=256,
+            noise_std_init=FULL_RAINBOW_NOISE_STD_INIT,
+            activation="relu",
+            num_quantiles=FULL_RAINBOW_NUM_QUANTILES,
+        )
     raise ValueError(
         f"Q_HEAD_PRESET={preset!r} is not implemented. "
         f"Available implemented presets: "
@@ -536,12 +640,14 @@ if MODE == "new":
         # UPDATED: MODEL_PRESET / Q_HEAD_PRESET로 쉽게 전환합니다.
         "stem_network": build_stem_network(MODEL_PRESET),
         "q_network": build_q_network(Q_HEAD_PRESET),
+        "auxiliary_heads_config": AUXILIARY_HEADS_CONFIG,
 
         # ── 학습률 (Learning Rate) ──
         "learning_rate": ParamScheduler(
-            init_value=0.0003,
+            init_value=LEARNING_RATE_INIT,
             decay_mode="exp",
-            half_life_period=100000,
+            half_life_period=LEARNING_RATE_HALF_LIFE,
+            minimum=LEARNING_RATE_MIN,
         ),
 
         # ── 탐험 정책 (Epsilon-Greedy) ──
@@ -579,6 +685,10 @@ if MODE == "new":
         # Human/GPT-readable CSV + PNG reports under:
         # out/angry_birds/<run>/diagnostic_reports/checkpoint_<step>/
         "checkpoint_diagnostics": True,
+        "convnext_finetune_at_step": (
+            CONVNEXT_FINETUNE_AT_STEP if SELECTED_RAINBOW_RUN.get("convnext_finetune", False) else None
+        ),
+        "convnext_finetune_lr_scale": CONVNEXT_FINETUNE_LR_SCALE,
         "use_tqdm": True,
 
         # ── Codex/GPT 친화 run metadata ──
@@ -610,6 +720,19 @@ if MODE == "new":
                 "pig_proxy_max_bonus": os.environ.get("AB_PIG_PROXY_MAX_BONUS"),
             },
             "model_preset": MODEL_PRESET,
+            "convnext_trainable_backbone_requested": CONVNEXT_TRAINABLE_BACKBONE,
+            "convnext_trainable_backbone_effective": EFFECTIVE_CONVNEXT_TRAINABLE_BACKBONE,
+            "convnext_finetune_at_step": (
+                CONVNEXT_FINETUNE_AT_STEP if SELECTED_RAINBOW_RUN.get("convnext_finetune", False) else None
+            ),
+            "convnext_finetune_lr_scale": CONVNEXT_FINETUNE_LR_SCALE,
+            "auxiliary_heads_enabled": AUXILIARY_HEADS_CONFIG is not None,
+            "auxiliary_heads_config": AUXILIARY_HEADS_CONFIG,
+            "learning_rate": {
+                "init": LEARNING_RATE_INIT,
+                "half_life_period": LEARNING_RATE_HALF_LIFE,
+                "minimum": LEARNING_RATE_MIN,
+            },
             "q_head_preset": Q_HEAD_PRESET,
             "model_preset_info": MODEL_PRESET_INFO,
             "q_head_preset_info": Q_HEAD_PRESET_INFO,
@@ -621,18 +744,20 @@ if MODE == "new":
                 "n_step": FULL_RAINBOW_N_STEP,
                 "noise_std_init": FULL_RAINBOW_NOISE_STD_INIT,
                 "num_atoms": FULL_RAINBOW_NUM_ATOMS,
+                "num_quantiles": FULL_RAINBOW_NUM_QUANTILES,
                 "v_min": FULL_RAINBOW_V_MIN,
                 "v_max": FULL_RAINBOW_V_MAX,
                 "double_dqn": True,
                 "dueling": True,
                 "prioritized_replay": True,
-                "c51": True,
+                "c51": Q_HEAD_PRESET in ("c51_distributional", "full_rainbow"),
+                "qr_dqn": USE_QR_RAINBOW,
                 "noisynet": USE_NOISYNET,
                 "epsilon_greedy_init": SELECTED_RAINBOW_RUN["epsilon_init"],
                 "epsilon_greedy_min": SELECTED_RAINBOW_RUN["epsilon_min"],
             },
             "current_honest_name": SELECTED_RAINBOW_RUN["label"],
-            "target_direction": "ConvNeXt-based Rainbow DQN A/B/C/D ablation matrix",
+            "target_direction": "Model F: QR-Rainbow with proxy reward and scheduled ConvNeXt fine-tuning",
             "not_implemented_warning": (
                 "IQN/FQF, R2D2, NGU, Agent57, PPO, SAC/TD3, Dreamer, and MuZero are listed "
                 "for transparency but are not active in this run."
@@ -650,7 +775,28 @@ elif MODE == "resume":
     # 환경은 continue_practice 내부에서 생성하므로 여기선 만들지 않음
     # ─────────────────────────────────────────────────────────
     resume_model = resolve_resume_model(RESUME_MODEL)
-    continue_practice(resume_model, AngryBirds, checkpoint_no=RESUME_CHECKPOINT_NO)
+    resume_overrides = {}
+    stem_config_override = None
+    if RESUME_TARGET_STEPS is not None:
+        resume_overrides["num_parallel_steps"] = int(RESUME_TARGET_STEPS)
+    if RESUME_LEARNING_RATE_INIT is not None and RESUME_LEARNING_RATE_INIT != "":
+        resume_overrides["learning_rate"] = ParamScheduler(
+            init_value=float(RESUME_LEARNING_RATE_INIT),
+            decay_mode="exp",
+            half_life_period=RESUME_LEARNING_RATE_HALF_LIFE,
+            minimum=RESUME_LEARNING_RATE_MIN,
+        )
+    if RESTORE_CONVNEXT_TRAINABLE_BACKBONE is not None and RESTORE_CONVNEXT_TRAINABLE_BACKBONE != "":
+        stem_config_override = {
+            "trainable_backbone": _env_bool("AB_RESTORE_CONVNEXT_TRAINABLE_BACKBONE", False)
+        }
+    continue_practice(
+        resume_model,
+        AngryBirds,
+        checkpoint_no=RESUME_CHECKPOINT_NO,
+        stem_config_override=stem_config_override,
+        **resume_overrides,
+    )
 
 elif MODE == "evaluate":
     # ─────────────────────────────────────────────────────────
@@ -658,7 +804,17 @@ elif MODE == "evaluate":
     # saved_model 없이 checkpoints/ 파일만 있어도 동작합니다.
     # ─────────────────────────────────────────────────────────
     resume_model = resolve_resume_model(RESUME_MODEL)
-    agent = restore(resume_model, AngryBirds, checkpoint_no=EVAL_CHECKPOINT_NO)
+    stem_config_override = None
+    if RESTORE_CONVNEXT_TRAINABLE_BACKBONE is not None and RESTORE_CONVNEXT_TRAINABLE_BACKBONE != "":
+        stem_config_override = {
+            "trainable_backbone": _env_bool("AB_RESTORE_CONVNEXT_TRAINABLE_BACKBONE", False)
+        }
+    agent = restore(
+        resume_model,
+        AngryBirds,
+        checkpoint_no=EVAL_CHECKPOINT_NO,
+        stem_config_override=stem_config_override,
+    )
     agent.just_play(verbose=True)
 
 else:

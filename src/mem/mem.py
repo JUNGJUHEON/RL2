@@ -35,11 +35,15 @@ class ReplayMemory:
         self.valid_first_step = True  # True => all trans. saved in first step are first trans. in resp. episode
         self.max_priority = 1  # TODO: to be deleted
 
-    def memorize_observations(self, states, hidden_states, actions, scores, rewards, terminals, gamma):
+    def memorize_observations(self, states, hidden_states, actions, scores, rewards, terminals, gamma,
+                              aux_labels=None):
         """Takes observations of one time-step from all parallel environments simultaneously. Returns
         the number of new transitions in this ReplayMemory available for learning."""
 
-        self.trans_buf.save_transitions(states, hidden_states, actions, scores, rewards, terminals, gamma)
+        self.trans_buf.save_transitions(
+            states, hidden_states, actions, scores, rewards, terminals, gamma,
+            aux_labels=aux_labels,
+        )
         if self.sequential:
             self.seq_mngr.update(terminals, self.trans_buf.stack_ptr, self.max_priority)
 
@@ -126,6 +130,13 @@ class ReplayMemory:
         else:
             trans_indices = self.id2idx(trans_ids)
             return self.trans_buf.get_terminals(trans_indices)
+
+    def get_aux_labels(self, trans_ids=None, label_names=None):
+        if trans_ids is None:
+            return self.trans_buf.get_aux_labels(label_names=label_names)
+        else:
+            trans_indices = self.id2idx(trans_ids)
+            return self.trans_buf.get_aux_labels(trans_indices, label_names=label_names)
 
     def get_priorities(self, inst_ids=None):
         if inst_ids is None:
