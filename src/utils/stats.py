@@ -335,7 +335,7 @@ class Statistics:
         return False
 
     def print_stats(self, par_step, total_par_steps, print_stats_period, num_par_envs,
-                    epsilon: int, ma_episode_size):
+                    epsilon: int, ma_episode_size, printer=None):
         assert self.timer_started
         comp_time = time.time() - self.computation_timer
         total_time = time.time() - self.total_timer
@@ -393,7 +393,9 @@ class Statistics:
                       "%d s" % np.round(comp_time) + \
                       "\n   Total comp time:           " + sec2hhmmss(total_time)
 
-        print(stats_text)
+        if printer is None:
+            printer = print
+        printer(stats_text)
         if self.logger is not None:
             self.logger.log_step_statistics(stats_text + "\n")
 

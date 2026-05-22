@@ -435,6 +435,19 @@ class Agent:
             "num_quantiles": int(quantile_np.shape[-1]),
         }
 
+    def _diagnose_auxiliary_batch(self, values):
+        if values is None or not self.uses_auxiliary_heads():
+            return {}
+        values_np = np.asarray(values)
+        if values_np.size == 0:
+            return {}
+        diagnostics = {"all": self._diagnose_array(values_np)}
+        for head_index, head_name in enumerate(self.auxiliary_label_names):
+            if values_np.shape[-1] <= head_index:
+                continue
+            diagnostics[head_name] = self._diagnose_array(values_np[..., head_index])
+        return diagnostics
+
     def _build_auxiliary_labels(self, scores, rewards, terminals, wins, env_step_diag=None):
         if not self.uses_auxiliary_heads():
             return None
@@ -564,13 +577,60 @@ class Agent:
         nonzero = probs[probs > 0]
         entropy = -np.sum(nonzero * np.log(nonzero))
         top_ids = np.argsort(self.action_counts)[-10:][::-1]
-        return {
+        diag = {
             "total_actions": total,
             "unique_actions": int(np.count_nonzero(self.action_counts)),
             "entropy": float(entropy),
             "top10_actions": top_ids.astype("int").tolist(),
             "top10_counts": self.action_counts[top_ids].astype("int").tolist(),
         }
+        try:
+            env_diag = self.env.get_diagnostics_config() if hasattr(self.env, "get_diagnostics_config") else {}
+            angle_res = int(env_diag.get("angle_resolution", 0) or 0)
+            tap_res = int(env_diag.get("tap_time_resolution", 0) or 0)
+            if angle_res > 0 and tap_res > 0 and angle_res * tap_res == len(self.action_counts):
+                grid = self.action_counts.reshape(angle_res, tap_res)
+                angle_counts = grid.sum(axis=1).astype("int")
+                tap_counts = grid.sum(axis=0).astype("int")
+
+                def _entropy(counts):
+                    count_total = float(np.sum(counts))
+                    if count_total <= 0:
+                        return 0.0
+                    p = counts.astype("float64") / count_total
+                    p = p[p > 0]
+                    return float(-np.sum(p * np.log(p)))
+
+                top_angle_bins = np.argsort(angle_counts)[-5:][::-1]
+                top_tap_bins = np.argsort(tap_counts)[-5:][::-1]
+                diag.update({
+                    "angle_bin_counts": angle_counts.tolist(),
+                    "tap_bin_counts": tap_counts.tolist(),
+                    "angle_entropy": _entropy(angle_counts),
+                    "tap_entropy": _entropy(tap_counts),
+                    "top5_angle_bins": top_angle_bins.astype("int").tolist(),
+                    "top5_angle_counts": angle_counts[top_angle_bins].astype("int").tolist(),
+                    "top5_tap_bins": top_tap_bins.astype("int").tolist(),
+                    "top5_tap_counts": tap_counts[top_tap_bins].astype("int").tolist(),
+                })
+        except Exception as exc:
+            diag["action_grid_error"] = str(exc)
+        return diag
+
+    def _convnext_diagnostics(self, current_transition=None, convnext_finetune_at_step=None):
+        enabled = bool(self.convnext_update_enabled.numpy())
+        diag = {
+            "update_enabled": enabled,
+            "gradient_scale": float(self.convnext_gradient_scale.numpy()),
+        }
+        if current_transition is not None:
+            diag["transition"] = int(current_transition)
+        if convnext_finetune_at_step is not None:
+            diag["finetune_at_step"] = int(convnext_finetune_at_step)
+            diag["transitions_until_finetune"] = int(
+                max(0, int(convnext_finetune_at_step) - int(current_transition or 0))
+            )
+        return diag
 
     def _diagnose_memory(self):
         if self.memory is None:
@@ -866,6 +926,10 @@ class Agent:
                 convnext_finetune_at_step=convnext_finetune_at_step,
                 convnext_finetune_lr_scale=convnext_finetune_lr_scale,
                 convnext_update_enabled=bool(self.convnext_update_enabled.numpy()),
+                convnext=self._convnext_diagnostics(
+                    current_transition=0,
+                    convnext_finetune_at_step=convnext_finetune_at_step,
+                ),
                 auxiliary_heads_config=self.auxiliary_heads_config,
                 run_metadata=run_metadata,
                 env=env_diag,
@@ -875,7 +939,9 @@ class Agent:
         step_iter = range(1, num_parallel_steps + 1)
         if use_tqdm and tqdm is not None:
             progress_bar = tqdm(step_iter, total=num_parallel_steps,
-                                desc=self.name, unit="step")
+                                desc=self.name, unit="step",
+                                dynamic_ncols=True, mininterval=1.0,
+                                smoothing=0.05, leave=True)
             step_iter = progress_bar
 
         for i in step_iter:
@@ -946,6 +1012,10 @@ class Agent:
                         action_distribution=self._diagnose_action_distribution(),
                         memory=self._diagnose_memory() if do_full_diagnostics else {},
                         model_activations=model_activations,
+                        convnext=self._convnext_diagnostics(
+                            current_transition=done_transitions,
+                            convnext_finetune_at_step=convnext_finetune_at_step,
+                        ),
                         full_diagnostics=bool(do_full_diagnostics),
                     )
 
@@ -1024,6 +1094,10 @@ class Agent:
                             learning_rate=float(self.learning_rate.get_value(done_transitions)),
                             learning=self.last_learning_diagnostics,
                             gradients=self.last_gradient_diagnostics,
+                            convnext=self._convnext_diagnostics(
+                                current_transition=done_transitions,
+                                convnext_finetune_at_step=convnext_finetune_at_step,
+                            ),
                             memory=self._diagnose_memory(),
                         )
                     new_transitions = max(0, new_transitions - learned_trans)
@@ -1044,6 +1118,13 @@ class Agent:
                         loop_step=i,
                         transition=int(done_transitions),
                         checkpoint_no=int(done_transitions),
+                        action_distribution=self._diagnose_action_distribution(),
+                        memory=self._diagnose_memory(),
+                        env=self.env.get_diagnostics_config() if hasattr(self.env, "get_diagnostics_config") else {},
+                        convnext=self._convnext_diagnostics(
+                            current_transition=done_transitions,
+                            convnext_finetune_at_step=convnext_finetune_at_step,
+                        ),
                     )
                 if checkpoint_diagnostics and diagnostics_period is not None and diagnostics_period > 0:
                     self._export_checkpoint_diagnostics_report(
@@ -1064,14 +1145,18 @@ class Agent:
 
             # Print a summary of current learning statistics (0 %)
             if i % PRINT_STATS_PERIOD == 0:
+                stats_printer = progress_bar.write if progress_bar is not None else print
                 self.stats.print_stats(i, num_parallel_steps, PRINT_STATS_PERIOD, self.num_par_envs,
-                                       self.epsilon.get_value(done_transitions), self.num_par_envs)
+                                       self.epsilon.get_value(done_transitions), self.num_par_envs,
+                                       printer=stats_printer)
                 if progress_bar is not None:
                     progress_bar.set_postfix({
                         "eps": f"{float(current_epsilon):.3f}",
                         "loss": f"{self._latest_loss():.4g}",
                         "mem": int(self.memory.get_num_transitions()),
+                        "ep": int(self.stats.get_num_episodes()),
                     })
+                    progress_bar.refresh()
 
             # if i % 10000 == 0:
             #     print_total_ram_usage()
@@ -1090,6 +1175,11 @@ class Agent:
                 memory_transitions=int(self.memory.get_num_transitions()) if self.memory is not None else 0,
                 latest_loss=self._latest_loss(),
                 action_distribution=self._diagnose_action_distribution(),
+                convnext=self._convnext_diagnostics(
+                    current_transition=self.stats.get_num_transitions()
+                    if hasattr(self.stats, "get_num_transitions") else None,
+                    convnext_finetune_at_step=convnext_finetune_at_step,
+                ),
                 memory=self._diagnose_memory(),
             )
             if checkpoint_diagnostics:
@@ -1214,19 +1304,26 @@ class Agent:
             "n_step_rewards": self._diagnose_array(n_step_rewards),
             "step_mask_true_fraction": float(np.mean(step_mask.astype("float32"))),
             "auxiliary_heads": self.auxiliary_heads_config if self.uses_auxiliary_heads() else None,
-            "auxiliary_targets": self._diagnose_array(aux_targets) if aux_targets is not None else {},
+            "auxiliary_loss_weight": float(self.auxiliary_loss_weight) if self.uses_auxiliary_heads() else 0.0,
+            "auxiliary_targets": self._diagnose_auxiliary_batch(aux_targets),
         }
 
         # Update the online network's weights
-        loss, individual_losses, predictions = self.fit(inputs, targets, epochs=epochs, verbose=verbose,
-                                                        batch_size=self.replay_batch_size,
-                                                        sample_weights=sample_weights,
-                                                        action_mask=action_mask,
-                                                        aux_targets=aux_targets)
+        loss, individual_losses, predictions, aux_predictions, loss_breakdown = self.fit(
+            inputs, targets, epochs=epochs, verbose=verbose,
+            batch_size=self.replay_batch_size,
+            sample_weights=sample_weights,
+            action_mask=action_mask,
+            aux_targets=aux_targets,
+        )
         self.last_learning_diagnostics.update({
             "loss": float(loss),
+            "q_loss": float(loss_breakdown.get("q_loss", loss)),
+            "auxiliary_loss": float(loss_breakdown.get("auxiliary_loss", 0.0)),
+            "weighted_auxiliary_loss": float(loss_breakdown.get("weighted_auxiliary_loss", 0.0)),
             "individual_losses": self._diagnose_array(individual_losses),
             "predictions_after_fit": self._diagnose_array(predictions),
+            "auxiliary_predictions": self._diagnose_auxiliary_batch(aux_predictions),
             "targets": self._diagnose_array(targets),
         })
 
@@ -1375,19 +1472,26 @@ class Agent:
             "num_quantiles": int(current_quantiles.shape[-1]),
             "quantile_loss": "selected_action_pairwise_huber",
             "auxiliary_heads": self.auxiliary_heads_config if self.uses_auxiliary_heads() else None,
-            "auxiliary_targets": self._diagnose_array(aux_targets) if aux_targets is not None else {},
+            "auxiliary_loss_weight": float(self.auxiliary_loss_weight) if self.uses_auxiliary_heads() else 0.0,
+            "auxiliary_targets": self._diagnose_auxiliary_batch(aux_targets),
         }
 
-        loss, individual_losses, predictions = self.fit(inputs, targets, epochs=epochs, verbose=verbose,
-                                                        batch_size=self.replay_batch_size,
-                                                        sample_weights=sample_weights,
-                                                        action_mask=action_mask,
-                                                        aux_targets=aux_targets)
+        loss, individual_losses, predictions, aux_predictions, loss_breakdown = self.fit(
+            inputs, targets, epochs=epochs, verbose=verbose,
+            batch_size=self.replay_batch_size,
+            sample_weights=sample_weights,
+            action_mask=action_mask,
+            aux_targets=aux_targets,
+        )
         self.last_learning_diagnostics.update({
             "loss": float(loss),
+            "q_loss": float(loss_breakdown.get("q_loss", loss)),
+            "auxiliary_loss": float(loss_breakdown.get("auxiliary_loss", 0.0)),
+            "weighted_auxiliary_loss": float(loss_breakdown.get("weighted_auxiliary_loss", 0.0)),
             "individual_losses": self._diagnose_array(individual_losses),
             "selected_action_losses": self._diagnose_array(individual_losses[batch_ids, actions]),
             "predictions_after_fit": self._diagnose_quantile_output(predictions),
+            "auxiliary_predictions": self._diagnose_auxiliary_batch(aux_predictions),
             "targets": self._diagnose_quantile_output(targets),
         })
 
@@ -1482,19 +1586,26 @@ class Agent:
             "n_step": int(n_step_rewards.shape[-1]),
             "c51_loss": "cross_entropy_on_selected_action_distribution",
             "auxiliary_heads": self.auxiliary_heads_config if self.uses_auxiliary_heads() else None,
-            "auxiliary_targets": self._diagnose_array(aux_targets) if aux_targets is not None else {},
+            "auxiliary_loss_weight": float(self.auxiliary_loss_weight) if self.uses_auxiliary_heads() else 0.0,
+            "auxiliary_targets": self._diagnose_auxiliary_batch(aux_targets),
         }
 
-        loss, individual_losses, predictions = self.fit(inputs, targets, epochs=epochs, verbose=verbose,
-                                                        batch_size=self.replay_batch_size,
-                                                        sample_weights=sample_weights,
-                                                        action_mask=action_mask,
-                                                        aux_targets=aux_targets)
+        loss, individual_losses, predictions, aux_predictions, loss_breakdown = self.fit(
+            inputs, targets, epochs=epochs, verbose=verbose,
+            batch_size=self.replay_batch_size,
+            sample_weights=sample_weights,
+            action_mask=action_mask,
+            aux_targets=aux_targets,
+        )
         self.last_learning_diagnostics.update({
             "loss": float(loss),
+            "q_loss": float(loss_breakdown.get("q_loss", loss)),
+            "auxiliary_loss": float(loss_breakdown.get("auxiliary_loss", 0.0)),
+            "weighted_auxiliary_loss": float(loss_breakdown.get("weighted_auxiliary_loss", 0.0)),
             "individual_losses": self._diagnose_array(individual_losses),
             "selected_action_losses": self._diagnose_array(individual_losses[batch_ids, actions]),
             "predictions_after_fit": self._diagnose_distributional_output(predictions),
+            "auxiliary_predictions": self._diagnose_auxiliary_batch(aux_predictions),
             "targets": self._diagnose_distributional_output(targets),
         })
 
@@ -1577,15 +1688,21 @@ class Agent:
         }
 
         # Update the online network's weights
-        loss, individual_losses, predictions = self.fit(inputs, targets, epochs=epochs, verbose=verbose,
-                                                        batch_size=self.replay_batch_size,
-                                                        sample_weights=sample_weights,
-                                                        hidden_states=first_hidden_states,
-                                                        seq_mask=mask)
+        loss, individual_losses, predictions, aux_predictions, loss_breakdown = self.fit(
+            inputs, targets, epochs=epochs, verbose=verbose,
+            batch_size=self.replay_batch_size,
+            sample_weights=sample_weights,
+            hidden_states=first_hidden_states,
+            seq_mask=mask,
+        )
         self.last_learning_diagnostics.update({
             "loss": float(loss),
+            "q_loss": float(loss_breakdown.get("q_loss", loss)),
+            "auxiliary_loss": float(loss_breakdown.get("auxiliary_loss", 0.0)),
+            "weighted_auxiliary_loss": float(loss_breakdown.get("weighted_auxiliary_loss", 0.0)),
             "individual_losses": self._diagnose_array(individual_losses),
             "predictions_after_fit": self._diagnose_array(predictions),
+            "auxiliary_predictions": self._diagnose_auxiliary_batch(aux_predictions),
             "targets": self._diagnose_array(targets),
         })
 
@@ -1613,9 +1730,12 @@ class Agent:
         # train_dataset = train_dataset.shuffle(buffer_size=1024, seed=self.seed)
         predictions = np.zeros(y.shape)
         individual_losses = np.zeros(y.shape[:-1])
+        aux_predictions = np.zeros(aux_targets.shape, dtype="float32")
         train_loss = 0
         gradient_stats_sum = np.zeros(len(GRADIENT_DIAGNOSTIC_NAMES), dtype="float64")
         gradient_stats_count = 0
+        loss_parts_sum = np.zeros(4, dtype="float64")
+        loss_parts_count = 0
 
         for epoch in range(epochs):
             if verbose:
@@ -1629,17 +1749,21 @@ class Agent:
                     self.online_learner.reset_states()
                     self.online_learner.stem_model.set_cell_states(hidden_b)
 
-                batch_individual_losses, batch_out, batch_gradient_stats, batch_total_loss = \
+                batch_individual_losses, batch_out, batch_aux_out, batch_gradient_stats, batch_loss_parts = \
                     self.train_step(x_b, y_b, aux_targets_b, act_mask_b, sample_weights_b, seq_mask_b)
                 gradient_stats_sum += batch_gradient_stats.numpy()
                 gradient_stats_count += 1
+                batch_loss_parts_np = batch_loss_parts.numpy()
+                loss_parts_sum += batch_loss_parts_np
+                loss_parts_count += 1
 
                 if epoch == epochs - 1:
                     at_instance = step * batch_size
                     predictions[at_instance:at_instance + len(y_b)] = batch_out
                     individual_losses[at_instance:at_instance + len(y_b)] = batch_individual_losses
+                    aux_predictions[at_instance:at_instance + len(y_b)] = batch_aux_out
 
-                train_loss = float(batch_total_loss.numpy())
+                train_loss = float(batch_loss_parts_np[0])
 
                 if verbose:
                     print("\rEpoch %d/%d - Batch %d/%d - Total loss: %.4f" %
@@ -1665,7 +1789,18 @@ class Agent:
         if verbose:
             print("Fitting took %.2f s." % (time.time() - start))
 
-        return train_loss, individual_losses, predictions
+        if loss_parts_count > 0:
+            loss_parts_avg = loss_parts_sum / loss_parts_count
+        else:
+            loss_parts_avg = np.zeros(4, dtype="float64")
+        loss_breakdown = {
+            "total_loss": float(loss_parts_avg[0]),
+            "q_loss": float(loss_parts_avg[1]),
+            "auxiliary_loss": float(loss_parts_avg[2]),
+            "weighted_auxiliary_loss": float(loss_parts_avg[3]),
+        }
+
+        return train_loss, individual_losses, predictions, aux_predictions, loss_breakdown
 
     @tf.function(reduce_retracing=True)
     def train_step(self, x, y, aux_targets, act_mask, sample_weight, seq_mask):
@@ -1735,6 +1870,8 @@ class Agent:
                 cumulated_loss = q_loss + self.auxiliary_loss_weight * aux_loss
             else:
                 cumulated_loss = q_loss
+                aux_loss = tf.constant(0.0, dtype=tf.float32)
+                aux_out = tf.zeros_like(aux_targets)
 
         trainable_weights = self.online_learner.trainable_weights
         grads = tape.gradient(cumulated_loss, trainable_weights)
@@ -1757,7 +1894,14 @@ class Agent:
         else:
             self.training_loss_metric.update_state(y, out)
 
-        return losses, out, gradient_stats, cumulated_loss
+        loss_parts = tf.stack([
+            tf.cast(cumulated_loss, tf.float32),
+            tf.cast(q_loss, tf.float32),
+            tf.cast(aux_loss, tf.float32),
+            tf.cast(self.auxiliary_loss_weight * aux_loss, tf.float32),
+        ])
+
+        return losses, out, aux_out, gradient_stats, loss_parts
 
     def plan_epsilon_greedy(self, states, epsilon, compute_return=False):
         """Epsilon greedy policy. With a probability of epsilon, a random action is returned. Else,

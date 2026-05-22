@@ -392,6 +392,7 @@ class AngryBirds(ParallelEnvironment):
         self.current_level       = None
         self.last_step_info      = {}
         self.level_best_scores   = {}
+        self.current_attempt_best_credit = 0
 
         self.run_framework()
         # Linux 빌드: game_playing_interface.jar가 9001.x86_64를 직접 실행한다.
@@ -595,6 +596,12 @@ class AngryBirds(ParallelEnvironment):
                     raise
                 self._restart_game()
 
+    def _begin_level_attempt(self, level_number):
+        if level_number is None:
+            self.current_attempt_best_credit = 0
+        else:
+            self.current_attempt_best_credit = int(self.level_best_scores.get(int(level_number), 0))
+
     def load_next_level(self):
         """Loads a level, depending on the level selection mode."""
 
@@ -609,6 +616,7 @@ class AngryBirds(ParallelEnvironment):
 
         next_level = int(next_level)
         self.current_level = next_level
+        self._begin_level_attempt(next_level)
         self.comm_interface.load_level(next_level)
 
         if sys.platform.startswith("linux"):
@@ -632,6 +640,7 @@ class AngryBirds(ParallelEnvironment):
 
     def load_specified_level(self, level_number=None):
         self.current_level = int(level_number) if level_number is not None else None
+        self._begin_level_attempt(self.current_level)
         self.comm_interface.load_level(level_number)
         self.current_level_birds = LEVEL_BIRD_MAP.get(level_number, [])
         self.current_shot_idx    = 0
@@ -672,13 +681,19 @@ class AngryBirds(ParallelEnvironment):
         loss_penalty = LOSS_PENALTY if lost else 0.0
         shot_penalty = SHOT_PENALTY
 
+        has_previous_best_score = self.current_level in self.level_best_scores
         best_score_before = int(self.level_best_scores.get(self.current_level, 0))
-        best_score_improvement = max(0, score_after - best_score_before)
+        best_score_credit_before = max(int(self.current_attempt_best_credit), best_score_before)
+        best_score_improvement = (
+            max(0, score_after - best_score_credit_before)
+            if has_previous_best_score else 0
+        )
         best_score_bonus = 0.0
         if REWARD_PROFILE in {"clamped_delta_best", "shaped_proxy_v1"} and best_score_improvement > 0:
             best_score_bonus = (
                 best_score_improvement / float(SCORE_NORMALIZATION)
             ) * LEVEL_BEST_SCORE_BONUS_SCALE
+            self.current_attempt_best_credit = max(best_score_credit_before, score_after)
 
         tap_score_bonus = 0.0
         tap_win_bonus = 0.0
@@ -705,12 +720,15 @@ class AngryBirds(ParallelEnvironment):
         if USE_REWARD_CLIP:
             reward = np.clip(reward, REWARD_CLIP_MIN, REWARD_CLIP_MAX)
 
-        if self.current_level is not None:
+        best_score_updated_on_game_over = False
+        if self.current_level is not None and game_over:
+            final_score_for_best = max(int(score_after_raw), int(score_after))
             self.level_best_scores[self.current_level] = max(
                 best_score_before,
-                int(score_after_raw),
-                int(score_after),
+                final_score_for_best,
             )
+            best_score_updated_on_game_over = int(self.level_best_scores[self.current_level]) > best_score_before
+            self.current_attempt_best_credit = int(self.level_best_scores[self.current_level])
 
         self.last_step_info = {
             "reward_profile": REWARD_PROFILE,
@@ -729,10 +747,14 @@ class AngryBirds(ParallelEnvironment):
             "win_bonus": float(win_bonus),
             "loss_penalty": float(loss_penalty),
             "shot_penalty": float(shot_penalty),
+            "has_previous_best_score": bool(has_previous_best_score),
             "best_score_before": int(best_score_before),
+            "best_score_credit_before": int(best_score_credit_before),
             "best_score_after": int(self.level_best_scores.get(self.current_level, best_score_before)),
             "best_score_improvement": int(best_score_improvement),
             "best_score_bonus": float(best_score_bonus),
+            "current_attempt_best_credit": int(self.current_attempt_best_credit),
+            "best_score_updated_on_game_over": bool(best_score_updated_on_game_over),
             "tap_score_bonus": float(tap_score_bonus),
             "tap_win_bonus": float(tap_win_bonus),
             "pig_proxy_units": int(pig_proxy_units),
@@ -926,6 +948,10 @@ class AngryBirds(ParallelEnvironment):
                 "loss_penalty": LOSS_PENALTY,
                 "shot_penalty": SHOT_PENALTY,
                 "level_best_score_bonus_scale": LEVEL_BEST_SCORE_BONUS_SCALE,
+                "level_best_score_bonus_reference": (
+                    "best completed previous score for the same level; "
+                    "not the immediately previous score and not first-visit score"
+                ),
                 "tap_score_delta_bonus": TAP_SCORE_DELTA_BONUS,
                 "tap_win_bonus": TAP_WIN_BONUS,
                 "pig_proxy_score_threshold": PIG_PROXY_SCORE_THRESHOLD,

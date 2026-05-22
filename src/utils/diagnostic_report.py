@@ -17,6 +17,7 @@ ACTIVATION_LAYERS = (
     "double_Q_network",
     "default_Q_network",
     "distributional_dueling_Q_network",
+    "quantile_dueling_Q_network",
 )
 
 STAT_FIELDS = ("shape", "dtype", "nan_count", "inf_count", "min", "max", "mean", "std", "sum")
@@ -24,6 +25,7 @@ STAT_FIELDS = ("shape", "dtype", "nan_count", "inf_count", "min", "max", "mean",
 LEARNING_ARRAYS = (
     "q_values",
     "next_q_values",
+    "next_online_q_values",
     "pred_returns",
     "pred_next_returns",
     "target_returns",
@@ -41,6 +43,15 @@ LEARNING_ARRAYS = (
 )
 
 DIST_ARRAYS = ("distribution", "atom_entropy", "atom_probability_sums", "support")
+QUANTILE_GROUPS = (
+    "current_quantiles",
+    "next_online_quantiles",
+    "next_target_quantiles",
+    "target_action_quantiles",
+    "predictions_after_fit",
+    "targets",
+)
+QUANTILE_ARRAYS = ("quantiles", "q_values", "quantile_std", "quantile_p10", "quantile_p90")
 
 
 def _load_plotting():
@@ -81,6 +92,34 @@ def _flatten_distribution_group(row: dict[str, Any], prefix: str, group: Any) ->
         return
     for name in DIST_ARRAYS:
         _flatten_stat(row, f"{prefix}_{name}", group.get(name))
+
+
+def _flatten_quantile_group(row: dict[str, Any], prefix: str, group: Any) -> None:
+    if not isinstance(group, dict):
+        return
+    for name in QUANTILE_ARRAYS:
+        _flatten_stat(row, f"{prefix}_{name}", group.get(name))
+    if "num_quantiles" in group:
+        row[f"{prefix}_num_quantiles"] = group.get("num_quantiles")
+
+
+def _safe_column_name(value: Any) -> str:
+    return "".join(ch if ch.isalnum() else "_" for ch in str(value)).strip("_")
+
+
+def _flatten_auxiliary_group(row: dict[str, Any], prefix: str, group: Any) -> None:
+    if not isinstance(group, dict):
+        return
+    if any(field in group for field in STAT_FIELDS):
+        _flatten_stat(row, prefix, group)
+    else:
+        _flatten_stat(row, prefix, group.get("all"))
+    for name, stats in group.items():
+        if name == "all":
+            continue
+        safe_name = _safe_column_name(name)
+        if safe_name:
+            _flatten_stat(row, f"{prefix}_{safe_name}", stats)
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -135,35 +174,77 @@ def _activation_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if isinstance(q_diag, dict):
             row["policy_decision"] = q_diag.get("policy_decision")
             row["policy_epsilon"] = q_diag.get("epsilon")
+            row["q_distributional"] = q_diag.get("distributional")
+            row["q_min"] = q_diag.get("min")
+            row["q_max"] = q_diag.get("max")
+            row["q_mean"] = q_diag.get("mean")
+            row["q_std"] = q_diag.get("std")
+            row["q_best_actions"] = json.dumps(q_diag.get("best_actions", []))
+            row["q_top5_actions_first_env"] = json.dumps(q_diag.get("top5_actions_first_env", []))
+            if isinstance(q_diag.get("qr_dqn"), dict):
+                _flatten_quantile_group(row, "policy_qr_dqn", q_diag.get("qr_dqn"))
+            if isinstance(q_diag.get("c51"), dict):
+                _flatten_distribution_group(row, "policy_c51", q_diag.get("c51"))
 
         action_diag = record.get("action_distribution", {})
         if isinstance(action_diag, dict):
             row["action_total"] = action_diag.get("total_actions")
             row["action_unique"] = action_diag.get("unique_actions")
             row["action_entropy"] = action_diag.get("entropy")
+            row["angle_entropy"] = action_diag.get("angle_entropy")
+            row["tap_entropy"] = action_diag.get("tap_entropy")
             row["top_actions"] = json.dumps(action_diag.get("top10_actions", []))
             row["top_action_counts"] = json.dumps(action_diag.get("top10_counts", []))
+            row["top_angle_bins"] = json.dumps(action_diag.get("top5_angle_bins", []))
+            row["top_angle_counts"] = json.dumps(action_diag.get("top5_angle_counts", []))
+            row["top_tap_bins"] = json.dumps(action_diag.get("top5_tap_bins", []))
+            row["top_tap_counts"] = json.dumps(action_diag.get("top5_tap_counts", []))
 
         env_step = record.get("env_step", {})
         if isinstance(env_step, dict):
             for key in (
+                "reward_profile",
                 "level",
                 "shot_idx",
+                "action",
                 "angle",
                 "tap_ms",
                 "score_before",
                 "score_after",
+                "score_after_raw",
+                "score_after",
                 "score_delta",
+                "score_delta_raw",
+                "score_regression_guarded",
                 "score_reward",
                 "win_bonus",
                 "loss_penalty",
                 "shot_penalty",
+                "has_previous_best_score",
+                "best_score_before",
+                "best_score_credit_before",
+                "best_score_after",
+                "best_score_improvement",
+                "best_score_bonus",
+                "current_attempt_best_credit",
+                "best_score_updated_on_game_over",
+                "tap_score_bonus",
+                "tap_win_bonus",
+                "pig_proxy_units",
+                "pig_proxy_bonus",
+                "proxy_bonus",
                 "final_reward",
                 "won",
                 "lost",
+                "game_over",
                 "app_state",
             ):
                 row[f"env_{key}"] = env_step.get(key)
+
+        convnext = record.get("convnext", {})
+        if isinstance(convnext, dict):
+            for key, value in convnext.items():
+                row[f"convnext_{key}"] = value
 
         _flatten_stat(row, "recent_rewards", record.get("recent_rewards"))
         for layer in ACTIVATION_LAYERS:
@@ -194,6 +275,10 @@ def _episode_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if isinstance(action_diag, dict):
             row["action_unique"] = action_diag.get("unique_actions")
             row["action_entropy"] = action_diag.get("entropy")
+            row["angle_entropy"] = action_diag.get("angle_entropy")
+            row["tap_entropy"] = action_diag.get("tap_entropy")
+            row["top_actions"] = json.dumps(action_diag.get("top10_actions", []))
+            row["top_tap_bins"] = json.dumps(action_diag.get("top5_tap_bins", []))
         rows.append(row)
     return rows
 
@@ -222,16 +307,38 @@ def _learning_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             row["sample_count"] = learning.get("sample_count")
             row["n_step"] = learning.get("n_step")
             row["c51_loss"] = learning.get("c51_loss")
+            row["quantile_loss"] = learning.get("quantile_loss")
+            row["num_quantiles"] = learning.get("num_quantiles")
             row["step_mask_true_fraction"] = learning.get("step_mask_true_fraction")
             for name in LEARNING_ARRAYS:
                 value = learning.get(name)
-                if name.endswith("distributions") or name in {"predictions_after_fit", "targets"}:
+                if name in QUANTILE_GROUPS:
+                    if isinstance(value, dict) and "quantiles" in value:
+                        _flatten_quantile_group(row, name, value)
+                    else:
+                        _flatten_distribution_group(row, name, value)
+                elif name.endswith("distributions") or name in {"predictions_after_fit", "targets"}:
                     _flatten_distribution_group(row, name, value)
                 else:
                     _flatten_stat(row, name, value)
+            for name in QUANTILE_GROUPS:
+                if name not in LEARNING_ARRAYS:
+                    _flatten_quantile_group(row, name, learning.get(name))
+            auxiliary = learning.get("auxiliary_heads")
+            row["auxiliary_heads_enabled"] = bool(auxiliary) if auxiliary is not None else False
+            row["auxiliary_loss_weight"] = learning.get("auxiliary_loss_weight")
+            row["q_loss"] = learning.get("q_loss")
+            row["auxiliary_loss"] = learning.get("auxiliary_loss")
+            row["weighted_auxiliary_loss"] = learning.get("weighted_auxiliary_loss")
+            _flatten_auxiliary_group(row, "auxiliary_targets", learning.get("auxiliary_targets"))
+            _flatten_auxiliary_group(row, "auxiliary_predictions", learning.get("auxiliary_predictions"))
         if isinstance(gradients, dict):
             for name, value in gradients.items():
                 row[f"gradient_norm_{name}"] = value
+        convnext = record.get("convnext", {})
+        if isinstance(convnext, dict):
+            for name, value in convnext.items():
+                row[f"convnext_{name}"] = value
         rows.append(row)
     return rows
 
@@ -252,6 +359,19 @@ def _build_summary(pd, records, activation_df, episode_df, learning_df, checkpoi
     starts = [record for record in records if record.get("event") == "training_start"]
     start = starts[0] if starts else {}
     run_metadata = start.get("run_metadata", {}) if isinstance(start.get("run_metadata"), dict) else {}
+    env_config = start.get("env", {}) if isinstance(start.get("env"), dict) else {}
+    reward_config = env_config.get("reward", {}) if isinstance(env_config.get("reward"), dict) else {}
+    train_levels = env_config.get("train_levels", []) if isinstance(env_config.get("train_levels"), list) else []
+
+    def num_col(df, name):
+        if name not in df:
+            return pd.Series([], dtype="float64")
+        return pd.to_numeric(df[name], errors="coerce").dropna()
+
+    def bool_col(df, name):
+        if name not in df:
+            return pd.Series([], dtype=bool)
+        return df[name].dropna().astype(bool)
 
     feature_nan_total = 0
     feature_inf_total = 0
@@ -275,6 +395,7 @@ def _build_summary(pd, records, activation_df, episode_df, learning_df, checkpoi
             feature_inf_total += int(activation_df[column].fillna(0).sum())
     for column in (
         "distributional_dueling_Q_network_nan_count",
+        "quantile_dueling_Q_network_nan_count",
         "double_Q_network_nan_count",
         "default_Q_network_nan_count",
     ):
@@ -282,6 +403,7 @@ def _build_summary(pd, records, activation_df, episode_df, learning_df, checkpoi
             q_nan_total += int(activation_df[column].fillna(0).sum())
     for column in (
         "distributional_dueling_Q_network_inf_count",
+        "quantile_dueling_Q_network_inf_count",
         "double_Q_network_inf_count",
         "default_Q_network_inf_count",
     ):
@@ -334,6 +456,76 @@ def _build_summary(pd, records, activation_df, episode_df, learning_df, checkpoi
         rl_note = "RL loss is noisy or not lower yet; check longer training and evaluation."
 
     wins = episode_df["win"].astype(bool) if "win" in episode_df and len(episode_df) else pd.Series([], dtype=bool)
+    level_values = []
+    if "level" in episode_df:
+        level_values.extend(num_col(episode_df, "level").astype(int).tolist())
+    if "env_level" in activation_df:
+        level_values.extend(num_col(activation_df, "env_level").astype(int).tolist())
+    unique_levels_seen = len(set(level_values))
+    num_train_levels = int(env_config.get("num_train_levels") or len(train_levels) or 0)
+    level_coverage = (unique_levels_seen / num_train_levels) if num_train_levels else None
+
+    proxy_bonus = num_col(activation_df, "env_proxy_bonus")
+    tap_score_bonus = num_col(activation_df, "env_tap_score_bonus")
+    tap_win_bonus = num_col(activation_df, "env_tap_win_bonus")
+    pig_proxy_bonus = num_col(activation_df, "env_pig_proxy_bonus")
+    best_score_bonus = num_col(activation_df, "env_best_score_bonus")
+    best_score_improvement = num_col(activation_df, "env_best_score_improvement")
+    score_regression_guarded = bool_col(activation_df, "env_score_regression_guarded")
+    tap_ms = num_col(activation_df, "env_tap_ms")
+
+    quantile_std = num_col(learning_df, "current_quantiles_quantile_std_mean")
+    quantile_p10 = num_col(learning_df, "current_quantiles_quantile_p10_mean")
+    quantile_p90 = num_col(learning_df, "current_quantiles_quantile_p90_mean")
+    quantile_spread = None
+    if len(quantile_p10) and len(quantile_p90):
+        quantile_spread = float((quantile_p90.reset_index(drop=True) - quantile_p10.reset_index(drop=True)).mean())
+
+    auxiliary_enabled = bool_col(learning_df, "auxiliary_heads_enabled")
+    auxiliary_loss = num_col(learning_df, "auxiliary_loss")
+    weighted_auxiliary_loss = num_col(learning_df, "weighted_auxiliary_loss")
+    q_loss = num_col(learning_df, "q_loss")
+    if len(auxiliary_enabled) and bool(auxiliary_enabled.any()):
+        auxiliary_status = "auxiliary_heads_logged"
+    elif run_metadata.get("auxiliary_heads_enabled"):
+        auxiliary_status = "auxiliary_selected_but_no_learning_update_yet"
+    else:
+        auxiliary_status = "not_auxiliary_run"
+
+    convnext_update_series = None
+    for df in (learning_df, activation_df):
+        if "convnext_update_enabled" in df and len(df["convnext_update_enabled"].dropna()):
+            convnext_update_series = df["convnext_update_enabled"].dropna().astype(bool)
+    convnext_update_last = bool(convnext_update_series.iloc[-1]) if convnext_update_series is not None else None
+    finetune_at = start.get("convnext_finetune_at_step")
+    if convnext_update_last is True:
+        convnext_finetune_status = "backbone_gradients_enabled"
+    elif finetune_at is not None:
+        convnext_finetune_status = "backbone_frozen_until_scheduled_finetune"
+    else:
+        convnext_finetune_status = "backbone_frozen_or_not_tracked"
+
+    if len(quantile_std):
+        qr_status = "qr_quantiles_logged"
+    elif run_metadata.get("q_head_preset") == "qr_rainbow":
+        qr_status = "qr_selected_but_no_learning_update_yet"
+    else:
+        qr_status = "not_qr_run"
+
+    if reward_config.get("reward_profile") == "shaped_proxy_v1":
+        proxy_reward_status = "proxy_reward_logged" if len(proxy_bonus) else "proxy_reward_selected_no_step_rows_yet"
+    else:
+        proxy_reward_status = "not_proxy_reward_run"
+
+    if level_coverage is None:
+        level_coverage_status = "unknown"
+    elif level_coverage >= 0.9:
+        level_coverage_status = "broad_all_map_coverage"
+    elif level_coverage >= 0.25:
+        level_coverage_status = "partial_map_coverage"
+    else:
+        level_coverage_status = "early_low_map_coverage"
+
     summary = {
         "checkpoint_label": checkpoint_label,
         "model": start.get("model"),
@@ -341,7 +533,14 @@ def _build_summary(pd, records, activation_df, episode_df, learning_df, checkpoi
         "q_network_class": start.get("q_network_class"),
         "training_size_preset": run_metadata.get("training_size_preset"),
         "rainbow_run_variant": run_metadata.get("rainbow_run_variant"),
+        "q_head_preset": run_metadata.get("q_head_preset"),
         "honest_run_name": run_metadata.get("current_honest_name"),
+        "reward_profile": reward_config.get("reward_profile"),
+        "train_level_pool": env_config.get("train_level_pool"),
+        "num_train_levels": num_train_levels,
+        "unique_levels_seen": unique_levels_seen,
+        "train_level_coverage": level_coverage,
+        "level_coverage_status": level_coverage_status,
         "activation_rows": activation_rows,
         "episode_count": int(len(episode_df)),
         "win_count": int(wins.sum()) if len(wins) else 0,
@@ -354,8 +553,40 @@ def _build_summary(pd, records, activation_df, episode_df, learning_df, checkpoi
         "loss_last": loss_last,
         "loss_min": loss_min,
         "loss_max": loss_max,
-        "last_epsilon": float(_last(activation_df["epsilon"].dropna())) if "epsilon" in activation_df else None,
-        "last_action_entropy": float(_last(activation_df["action_entropy"].dropna())) if "action_entropy" in activation_df else None,
+        "last_epsilon": float(_last(num_col(activation_df, "epsilon"))) if len(num_col(activation_df, "epsilon")) else None,
+        "last_action_entropy": float(_last(num_col(activation_df, "action_entropy"))) if len(num_col(activation_df, "action_entropy")) else None,
+        "last_angle_entropy": float(_last(num_col(activation_df, "angle_entropy"))) if len(num_col(activation_df, "angle_entropy")) else None,
+        "last_tap_entropy": float(_last(num_col(activation_df, "tap_entropy"))) if len(num_col(activation_df, "tap_entropy")) else None,
+        "avg_tap_ms_logged_steps": _mean(tap_ms),
+        "proxy_bonus_positive_rate": float((proxy_bonus > 0).mean()) if len(proxy_bonus) else None,
+        "proxy_reward_status": proxy_reward_status,
+        "avg_proxy_bonus": _mean(proxy_bonus),
+        "avg_tap_score_bonus": _mean(tap_score_bonus),
+        "tap_score_bonus_count": int((tap_score_bonus > 0).sum()) if len(tap_score_bonus) else 0,
+        "tap_win_bonus_count": int((tap_win_bonus > 0).sum()) if len(tap_win_bonus) else 0,
+        "pig_proxy_bonus_count": int((pig_proxy_bonus > 0).sum()) if len(pig_proxy_bonus) else 0,
+        "avg_pig_proxy_bonus": _mean(pig_proxy_bonus),
+        "best_score_bonus_count": int((best_score_bonus > 0).sum()) if len(best_score_bonus) else 0,
+        "best_score_improvement_count": int((best_score_improvement > 0).sum()) if len(best_score_improvement) else 0,
+        "score_regression_guarded_count": int(score_regression_guarded.sum()) if len(score_regression_guarded) else 0,
+        "qr_num_quantiles": int(_last(learning_df["num_quantiles"].dropna())) if "num_quantiles" in learning_df and len(learning_df["num_quantiles"].dropna()) else None,
+        "qr_status": qr_status,
+        "qr_current_quantile_std_mean": _mean(quantile_std),
+        "qr_current_quantile_spread_p90_p10_mean": quantile_spread,
+        "auxiliary_status": auxiliary_status,
+        "auxiliary_loss_mean": _mean(auxiliary_loss),
+        "auxiliary_loss_last": float(_last(auxiliary_loss)) if len(auxiliary_loss) else None,
+        "weighted_auxiliary_loss_mean": _mean(weighted_auxiliary_loss),
+        "weighted_auxiliary_loss_last": float(_last(weighted_auxiliary_loss)) if len(weighted_auxiliary_loss) else None,
+        "q_loss_mean": _mean(q_loss),
+        "q_loss_last": float(_last(q_loss)) if len(q_loss) else None,
+        "convnext_update_enabled_last": convnext_update_last,
+        "convnext_finetune_status": convnext_finetune_status,
+        "convnext_gradient_scale_last": float(_last(num_col(learning_df, "convnext_gradient_scale"))) if len(num_col(learning_df, "convnext_gradient_scale")) else None,
+        "gradient_norm_convnext_backbone_last": float(_last(num_col(learning_df, "gradient_norm_convnext_backbone"))) if len(num_col(learning_df, "gradient_norm_convnext_backbone")) else None,
+        "gradient_norm_convnext_backbone_mean": _mean(num_col(learning_df, "gradient_norm_convnext_backbone")),
+        "gradient_norm_image_projection_mean": _mean(num_col(learning_df, "gradient_norm_image_projection")),
+        "gradient_norm_distributional_q_network_mean": _mean(num_col(learning_df, "gradient_norm_distributional_q_network")),
         "convnext_feature_nan_total": feature_nan_total,
         "convnext_feature_inf_total": feature_inf_total,
         "q_output_nan_total": q_nan_total,
@@ -406,6 +637,8 @@ def _plot_activation_health(plt, activation_df, out_path: Path) -> None:
     for column, label in (
         ("distributional_dueling_Q_network_std", "C51 output std"),
         ("distributional_dueling_Q_network_max", "C51 output max"),
+        ("quantile_dueling_Q_network_std", "QR output std"),
+        ("quantile_dueling_Q_network_max", "QR output max"),
         ("latent_std", "latent std"),
     ):
         if column in activation_df:
@@ -528,16 +761,46 @@ def _write_markdown_summary(out_path: Path, diagnostics_path: Path, summary: dic
         f"- Win rate: {fmt(summary.get('win_rate'))}",
         f"- Average return: {fmt(summary.get('avg_episode_return'))}",
         f"- Average score: {fmt(summary.get('avg_score'))}",
+        f"- Train level pool / coverage: {fmt(summary.get('train_level_pool'))} / "
+        f"{fmt(summary.get('unique_levels_seen'))}/{fmt(summary.get('num_train_levels'))} "
+        f"({fmt(summary.get('train_level_coverage'))})",
         f"- Learning updates: {fmt(summary.get('learning_updates'))}",
         f"- Loss first/last/min/max: {fmt(summary.get('loss_first'))} / {fmt(summary.get('loss_last'))} / "
         f"{fmt(summary.get('loss_min'))} / {fmt(summary.get('loss_max'))}",
         f"- Last epsilon: {fmt(summary.get('last_epsilon'))}",
+        f"- Last action/angle/tap entropy: {fmt(summary.get('last_action_entropy'))} / "
+        f"{fmt(summary.get('last_angle_entropy'))} / {fmt(summary.get('last_tap_entropy'))}",
         f"- ConvNeXt image feature std min/mean: {fmt(summary.get('convnext_image_feature_std_min'))} / "
         f"{fmt(summary.get('convnext_image_feature_std_mean'))}",
+        f"- ConvNeXt fine-tune status: {fmt(summary.get('convnext_finetune_status'))}; "
+        f"backbone grad norm last/mean: {fmt(summary.get('gradient_norm_convnext_backbone_last'))} / "
+        f"{fmt(summary.get('gradient_norm_convnext_backbone_mean'))}",
+        f"- QR status: {fmt(summary.get('qr_status'))}; quantiles: {fmt(summary.get('qr_num_quantiles'))}; "
+        f"std mean: {fmt(summary.get('qr_current_quantile_std_mean'))}; "
+        f"p90-p10 spread mean: {fmt(summary.get('qr_current_quantile_spread_p90_p10_mean'))}",
+        f"- Auxiliary heads: {fmt(summary.get('auxiliary_status'))}; aux loss last/mean: "
+        f"{fmt(summary.get('auxiliary_loss_last'))} / {fmt(summary.get('auxiliary_loss_mean'))}; "
+        f"weighted aux last/mean: {fmt(summary.get('weighted_auxiliary_loss_last'))} / "
+        f"{fmt(summary.get('weighted_auxiliary_loss_mean'))}",
+        f"- Proxy reward status: {fmt(summary.get('proxy_reward_status'))}; positive rate: "
+        f"{fmt(summary.get('proxy_bonus_positive_rate'))}; avg proxy bonus: {fmt(summary.get('avg_proxy_bonus'))}",
+        f"- Proxy counts tap-score/tap-win/pig/best-score: "
+        f"{fmt(summary.get('tap_score_bonus_count'))} / {fmt(summary.get('tap_win_bonus_count'))} / "
+        f"{fmt(summary.get('pig_proxy_bonus_count'))} / {fmt(summary.get('best_score_bonus_count'))}",
         f"- ConvNeXt NaN/Inf total: {fmt(summary.get('convnext_feature_nan_total'))} / "
         f"{fmt(summary.get('convnext_feature_inf_total'))}",
         f"- Q output NaN/Inf total: {fmt(summary.get('q_output_nan_total'))} / "
         f"{fmt(summary.get('q_output_inf_total'))}",
+        "",
+        "## Added Components Compared With Model D",
+        "",
+        f"- QR-DQN head: {fmt(summary.get('qr_status'))}",
+        f"- Low epsilon plus NoisyNet exploration: last epsilon {fmt(summary.get('last_epsilon'))}",
+        f"- Scheduled ConvNeXt fine-tuning: {fmt(summary.get('convnext_finetune_status'))}",
+        f"- Proxy reward shaping: {fmt(summary.get('proxy_reward_status'))}",
+        f"- All-map training pool: {fmt(summary.get('level_coverage_status'))}",
+        f"- Action/tap usage: action entropy {fmt(summary.get('last_action_entropy'))}, "
+        f"tap entropy {fmt(summary.get('last_tap_entropy'))}",
         "",
         "## Files",
         "",
@@ -566,11 +829,42 @@ def export_training_diagnostics_report(
     activation_df = pd.DataFrame(_activation_rows(records))
     episode_df = pd.DataFrame(_episode_rows(records))
     learning_df = pd.DataFrame(_learning_rows(records))
+    reward_action_columns = [
+        column for column in activation_df.columns
+        if column.startswith("env_")
+        or column in {
+            "model", "wall_time", "loop_step", "transition", "action", "action_text",
+            "reward", "score", "terminal", "win", "game_over", "action_total",
+            "action_unique", "action_entropy", "angle_entropy", "tap_entropy",
+            "top_actions", "top_action_counts", "top_angle_bins", "top_tap_bins",
+        }
+    ] if not activation_df.empty else []
+    reward_action_df = activation_df[reward_action_columns].copy() if reward_action_columns else pd.DataFrame()
+    if not episode_df.empty and "level" in episode_df:
+        level_summary_df = (
+            episode_df.assign(win_numeric=episode_df["win"].astype(float))
+            .groupby("level", dropna=True)
+            .agg(
+                episodes=("level", "size"),
+                wins=("win_numeric", "sum"),
+                win_rate=("win_numeric", "mean"),
+                avg_score=("score", "mean"),
+                max_score=("score", "max"),
+                avg_return=("episode_return", "mean"),
+                avg_shots=("shots", "mean"),
+            )
+            .reset_index()
+            .sort_values(["win_rate", "episodes"], ascending=[True, False])
+        )
+    else:
+        level_summary_df = pd.DataFrame()
 
     artifacts = {
         "convnext_rl_step_csv": "convnext_rl_step_diagnostics.csv",
         "episode_csv": "episode_diagnostics.csv",
         "learning_csv": "learning_diagnostics.csv",
+        "reward_action_csv": "reward_action_diagnostics.csv",
+        "level_summary_csv": "level_summary_diagnostics.csv",
         "activation_plot": "convnext_activation_health.png",
         "rl_plot": "rainbow_rl_training_health.png",
         "summary_json": "summary.json",
@@ -580,6 +874,8 @@ def export_training_diagnostics_report(
     activation_df.to_csv(output_dir / artifacts["convnext_rl_step_csv"], index=False)
     episode_df.to_csv(output_dir / artifacts["episode_csv"], index=False)
     learning_df.to_csv(output_dir / artifacts["learning_csv"], index=False)
+    reward_action_df.to_csv(output_dir / artifacts["reward_action_csv"], index=False)
+    level_summary_df.to_csv(output_dir / artifacts["level_summary_csv"], index=False)
 
     _plot_activation_health(plt, activation_df, output_dir / artifacts["activation_plot"])
     _plot_rl_health(plt, pd, activation_df, episode_df, learning_df, output_dir / artifacts["rl_plot"])
