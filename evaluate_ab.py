@@ -17,7 +17,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 from src.utils.utils import setup_hardware
-from src.envs.angry_birds import AngryBirds, FILTERED_TRAIN_LEVELS, STATE_PIXEL_RES, BIRD_DIM, action_to_params
+from src.envs.angry_birds import (
+    ALL_400_TRAIN_LEVELS,
+    AngryBirds,
+    FILTERED_TRAIN_LEVELS,
+    STATE_PIXEL_RES,
+    BIRD_DIM,
+    action_to_params,
+)
 
 # ─────────────────────────────────────────────────────────────
 # 평가 설정
@@ -36,6 +43,10 @@ COMPETITION_LEVELS = None   # None이면 아래 NUM_EVAL_LEVELS개를 랜덤 샘
 
 # COMPETITION_LEVELS가 None일 때 사용할 랜덤 평가 레벨 수
 NUM_EVAL_LEVELS = int(os.environ.get("AB_NUM_EVAL_LEVELS", "20"))
+EVAL_LEVEL_POOL = os.environ.get(
+    "AB_EVAL_LEVEL_POOL",
+    os.environ.get("AB_TRAIN_LEVEL_POOL", "all400"),
+).lower()
 
 # 평가 시 게임 속도 (1=원래 속도, 100=빠른 속도)
 SIM_SPEED = int(os.environ.get("AB_SIM_SPEED", "3"))
@@ -113,10 +124,15 @@ def evaluate_model(model_name: str,
 
     # ── 평가 레벨 목록 결정 ──
     if eval_levels is None:
+        candidate_levels = (
+            ALL_400_TRAIN_LEVELS
+            if EVAL_LEVEL_POOL in {"all400", "all_400", "all"}
+            else FILTERED_TRAIN_LEVELS
+        )
         np.random.seed(42)
         eval_levels = sorted(np.random.choice(
-            FILTERED_TRAIN_LEVELS,
-            size=min(num_eval_levels, len(FILTERED_TRAIN_LEVELS)),
+            candidate_levels,
+            size=min(num_eval_levels, len(candidate_levels)),
             replace=False
         ).tolist())
     else:
@@ -157,8 +173,11 @@ def evaluate_single_level(predict_fn, env: AngryBirds, level: int) -> dict:
     Returns:
         dict: level, score, passed, num_shots, elapsed_sec
     """
+    env.scores[:] = 0
+    env.times[:] = 0
+    env.game_overs[:] = False
+    env.wins[:] = False
     env.load_specified_level(level)
-    env.reset()
 
     start_time = time.time()
     total_score = 0

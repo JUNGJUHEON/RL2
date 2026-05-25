@@ -46,10 +46,6 @@ from src.utils.utils import setup_hardware, split_params
 
 HARDWARE_STATUS = setup_hardware(use_gpu=USE_GPU, gpu_memory_limit=GPU_MEMORY_LIMIT_MB)
 
-from src.agent.agent import Agent, continue_practice, restore
-from src.utils.params import ParamScheduler
-import src.agent.model as model
-
 # =============================================================
 #  실행 모드 선택
 # =============================================================
@@ -233,7 +229,7 @@ if MODEL_EXPERIMENT_PROFILE not in MODEL_EXPERIMENT_PROFILES:
 
 SELECTED_MODEL_EXPERIMENT = MODEL_EXPERIMENT_PROFILES[MODEL_EXPERIMENT_PROFILE]
 for key, value in SELECTED_MODEL_EXPERIMENT["env"].items():
-    os.environ.setdefault(key, str(value))
+    os.environ[key] = str(value)
 
 print(
     f"Model experiment profile: {MODEL_EXPERIMENT_PROFILE} "
@@ -251,8 +247,12 @@ print(
 )
 
 # AngryBirds reads reward/profile env vars at import time, so import it only
-# after MODEL_EXPERIMENT_PROFILE has applied its environment defaults.
+# after MODEL_EXPERIMENT_PROFILE has applied its environment defaults. Agent is
+# imported after this point too, because importing it touches the src.envs package.
 from src.envs.angry_birds import AngryBirds
+from src.agent.agent import Agent, continue_practice, restore
+from src.utils.params import ParamScheduler
+import src.agent.model as model
 
 if TRAINING_SIZE_PRESET not in TRAINING_SIZE_PRESETS:
     raise ValueError(
@@ -766,7 +766,7 @@ if MODE == "new":
                 "epsilon_greedy_min": SELECTED_RAINBOW_RUN["epsilon_min"],
             },
             "current_honest_name": SELECTED_RAINBOW_RUN["label"],
-            "target_direction": "Model F: QR-Rainbow with proxy reward and scheduled ConvNeXt fine-tuning",
+            "target_direction": "Model F: QR-Rainbow with proxy reward, epsilon floor, frozen ConvNeXt, and optional auxiliary heads",
             "not_implemented_warning": (
                 "IQN/FQF, R2D2, NGU, Agent57, PPO, SAC/TD3, Dreamer, and MuZero are listed "
                 "for transparency but are not active in this run."

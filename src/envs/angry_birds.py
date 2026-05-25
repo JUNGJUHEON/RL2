@@ -641,8 +641,20 @@ class AngryBirds(ParallelEnvironment):
     def load_specified_level(self, level_number=None):
         self.current_level = int(level_number) if level_number is not None else None
         self._begin_level_attempt(self.current_level)
-        self.comm_interface.load_level(level_number)
-        self.current_level_birds = LEVEL_BIRD_MAP.get(level_number, [])
+        self.comm_interface.load_level(self.current_level)
+        if sys.platform.startswith("linux"):
+            _PLAYABLE = {GameState.PLAYING, GameState.WON, GameState.LOST}
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                state = self.comm_interface.get_game_state()
+                if state in _PLAYABLE:
+                    break
+                if state == GameState.REQUESTNOVELTYLIKELIHOOD:
+                    self.comm_interface.report_novelty_likelihood(0.0)
+                    time.sleep(0.3)
+                    continue
+                time.sleep(0.5)
+        self.current_level_birds = LEVEL_BIRD_MAP.get(self.current_level, [])
         self.current_shot_idx    = 0
 
     def step(self, actions):
