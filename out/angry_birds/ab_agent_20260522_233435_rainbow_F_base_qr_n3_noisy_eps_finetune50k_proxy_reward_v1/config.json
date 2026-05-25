@@ -1,0 +1,33 @@
+{
+  "stem_model_class": "PretrainedConvNeXtTiny",
+  "stem_model_config": {
+    "image_feature_dim": 512,
+    "bird_embed_dim": 32,
+    "weights": null,
+    "pretrained_source": "imagenet",
+    "trainable_backbone": true,
+    "dropout_rate": 0.0
+  },
+  "q_network_class": "QuantileDuelingQNetwork",
+  "q_network_config": {
+    "latent_v_dim": 256,
+    "latent_a_dim": 256,
+    "noise_std_init": 0.5,
+    "activation": "relu",
+    "num_quantiles": 51
+  },
+  "env_config": {
+    "num_par_inst": 1
+  },
+  "agent_config": {
+    "replay_batch_size": 32,
+    "stack_size": 1,
+    "seed": 679692241,
+    "auxiliary_heads_config": {
+      "enabled": false,
+      "loss_weight": 0.0,
+      "hidden_dim": 128,
+      "heads": []
+    }
+  }
+}

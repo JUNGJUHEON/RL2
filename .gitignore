@@ -3,7 +3,11 @@ __pycache__/
 *.pyo
 
 # Local training outputs and checkpoints.
-out/
+# Local training outputs and checkpoints.
+out/*
+!out/angry_birds/
+!out/angry_birds/ab_agent_20260522_233435_rainbow_F_base_qr_n3_noisy_eps_finetune50k_proxy_reward_v1/
+!out/angry_birds/ab_agent_20260522_233435_rainbow_F_base_qr_n3_noisy_eps_finetune50k_proxy_reward_v1/**
 
 # Science Birds runtime outputs.
 src/envs/ab/Science Birds 0.3.8/linux/Agent_noname_Port_*_Evaluation_*/
