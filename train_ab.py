@@ -139,9 +139,9 @@ CONVNEXT_FINETUNE_LR_SCALE = _env_float("AB_CONVNEXT_FINETUNE_LR_SCALE", 0.1)
 # Rainbow A/B/C/D/E/F experiment knob.
 # F_base is QR-Rainbow plus train-only proxy reward with a frozen ConvNeXt
 # backbone. F_aux adds train-only auxiliary heads.
-RAINBOW_RUN_VARIANT = _env_str("AB_RAINBOW_RUN_VARIANT", "F_base")
+RAINBOW_RUN_VARIANT = _env_str("AB_RAINBOW_RUN_VARIANT", "F_aux")
 
-TRAINING_SIZE_PRESET = _env_str("AB_TRAINING_SIZE_PRESET", "f100")
+TRAINING_SIZE_PRESET = _env_str("AB_TRAINING_SIZE_PRESET", "f50")
 TRAINING_SIZE_PRESETS = {
     "smoke": {
         "num_parallel_steps": 5000,
@@ -166,6 +166,12 @@ TRAINING_SIZE_PRESETS = {
         "memory_size": 100000,
         "replay_batch_size": 32,
         "notes": "First serious full-performance run for RTX 4060 Ti class hardware.",
+    },
+    "f50": {
+        "num_parallel_steps": 50000,
+        "memory_size": 50000,
+        "replay_batch_size": 32,
+        "notes": "Model F auxiliary fixed-reward run: 50k steps, frozen ConvNeXt, batch 32.",
     },
     "f100": {
         "num_parallel_steps": 100000,
