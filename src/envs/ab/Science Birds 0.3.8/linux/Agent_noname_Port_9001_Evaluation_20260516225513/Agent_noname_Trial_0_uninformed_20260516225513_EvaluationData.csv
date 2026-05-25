@@ -1,4 +1,3 @@
-EvaluationIndex,LevelIndex,Score,LevelStatus,birdsRemaining,pigsRemaining,birdsAtStart,pigsAtStart, trial,levelName,playStatus,informed,novelty
-1,225,25960,Pass,1,0,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00225_1_1_2_0.xml,training,uninformed,basic
-2,86,25080,Fail,0,1,3,3, 0,./Levels/novelty_level_0/type2_win/Levels/00086_1_1_2_0.xml,training,uninformed,basic
-3,330,25990,Pass,1,0,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00330_1_1_2_0.xml,training,uninformed,basic
+version https://git-lfs.github.com/spec/v1
+oid sha256:ddda9062b1cff6ca905c0d94836d44a50bbc2b48a35ee1f027ba017bfcc4f979
+size 485

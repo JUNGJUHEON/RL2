@@ -1,8 +1,3 @@
-EvaluationIndex,LevelIndex,Score,LevelStatus,birdsRemaining,pigsRemaining,birdsAtStart,pigsAtStart, trial,levelName,playStatus,informed,novelty
-1,21,0,Playing,3,3,3,3, 0,./Levels/novelty_level_0/type2_win/Levels/00021_1_1_2_0.xml,training,uninformed,basic
-2,128,0,Playing,3,2,3,2, 0,./Levels/novelty_level_0/type2_win/Levels/00128_1_1_2_0.xml,training,uninformed,basic
-3,26,0,Playing,3,2,3,2, 0,./Levels/novelty_level_0/type2_win/Levels/00026_1_1_2_0.xml,training,uninformed,basic
-4,48,0,Playing,4,5,4,5, 0,./Levels/novelty_level_0/type2_win/Levels/00048_1_1_2_0.xml,training,uninformed,basic
-5,100,0,Playing,3,1,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00100_1_1_2_0.xml,training,uninformed,basic
-6,223,0,Playing,3,1,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00223_1_1_2_0.xml,training,uninformed,basic
-7,327,0,Playing,3,1,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00327_1_1_2_0.xml,training,uninformed,basic
+version https://git-lfs.github.com/spec/v1
+oid sha256:ab78e8a5080d0602f353d831c856a0b74ae360a2c3cb6b8a1149d61cfda9e2db
+size 932

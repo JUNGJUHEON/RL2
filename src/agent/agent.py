@@ -2004,7 +2004,7 @@ class Agent:
 
     def _update_convnext_finetune_state(self, current_transition, convnext_finetune_at_step=None):
         if convnext_finetune_at_step is None:
-            enabled = True
+            enabled = self._has_trainable_convnext_backbone_weights()
         else:
             enabled = int(current_transition) >= int(convnext_finetune_at_step)
 
@@ -2021,6 +2021,13 @@ class Agent:
                     f"lr_scale={float(self.convnext_gradient_scale.numpy()):.4g})."
                 )
             self._last_convnext_update_enabled = bool(enabled)
+
+    def _has_trainable_convnext_backbone_weights(self):
+        for weight in getattr(self.online_learner, "trainable_weights", []):
+            name = weight.name.lower()
+            if "convnext" in name and "convnext_image_feature" not in name:
+                return True
+        return False
 
     def _gate_convnext_gradients(self, grads, weights):
         scale = tf.where(

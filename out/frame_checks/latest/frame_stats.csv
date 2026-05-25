@@ -1,9 +1,3 @@
-frame,level,bird_vector,raw_path,preprocessed_path,raw_min,raw_max,raw_mean,raw_std,pre_min,pre_max,pre_mean,pre_std
-1,21,"[0.0, 0.0, 0.0, 0.0, 1.0]",out/frame_checks/latest/raw_128/frame_01_level_21_raw.png,out/frame_checks/latest/preprocessed_128/frame_01_level_21_preprocessed.png,4.0,255.0,229.7970428466797,40.22392654418945,0.01568627543747425,1.0,0.9011648297309875,0.15774087607860565
-2,128,"[0.0, 0.0, 1.0, 0.0, 0.0]",out/frame_checks/latest/raw_128/frame_02_level_128_raw.png,out/frame_checks/latest/preprocessed_128/frame_02_level_128_preprocessed.png,5.0,255.0,234.9640350341797,32.7220458984375,0.019607843831181526,1.0,0.9214276671409607,0.12832173705101013
-3,26,"[1.0, 0.0, 0.0, 0.0, 0.0]",out/frame_checks/latest/raw_128/frame_03_level_26_raw.png,out/frame_checks/latest/preprocessed_128/frame_03_level_26_preprocessed.png,0.0,255.0,232.8300323486328,36.479557037353516,0.0,1.0,0.9130589962005615,0.14305707812309265
-4,48,"[1.0, 0.0, 0.0, 0.0, 0.0]",out/frame_checks/latest/raw_128/frame_04_level_48_raw.png,out/frame_checks/latest/preprocessed_128/frame_04_level_48_preprocessed.png,0.0,255.0,227.3567657470703,45.549686431884766,0.0,1.0,0.891595184803009,0.17862622439861298
-5,100,"[0.0, 1.0, 0.0, 0.0, 0.0]",out/frame_checks/latest/raw_128/frame_05_level_100_raw.png,out/frame_checks/latest/preprocessed_128/frame_05_level_100_preprocessed.png,0.0,255.0,227.61497497558594,43.778316497802734,0.0,1.0,0.8926076889038086,0.17167966067790985
-6,223,"[1.0, 0.0, 0.0, 0.0, 0.0]",out/frame_checks/latest/raw_128/frame_06_level_223_raw.png,out/frame_checks/latest/preprocessed_128/frame_06_level_223_preprocessed.png,0.0,255.0,239.05267333984375,18.29608154296875,0.0,1.0,0.9374614357948303,0.07174933701753616
-7,327,"[0.0, 1.0, 0.0, 0.0, 0.0]",out/frame_checks/latest/raw_128/frame_07_level_327_raw.png,out/frame_checks/latest/preprocessed_128/frame_07_level_327_preprocessed.png,3.0,255.0,238.7393035888672,19.59772300720215,0.0117647061124444,1.0,0.9362325668334961,0.07685381174087524
-8,39,"[0.0, 0.0, 1.0, 0.0, 0.0]",out/frame_checks/latest/raw_128/frame_08_level_39_raw.png,out/frame_checks/latest/preprocessed_128/frame_08_level_39_preprocessed.png,0.0,255.0,227.70159912109375,44.03096008300781,0.0,1.0,0.8929473757743835,0.17267045378684998
+version https://git-lfs.github.com/spec/v1
+oid sha256:2b458b497ac7137cf432168723da636cf86da95f902dea8b017396d02c5f7731
+size 2270

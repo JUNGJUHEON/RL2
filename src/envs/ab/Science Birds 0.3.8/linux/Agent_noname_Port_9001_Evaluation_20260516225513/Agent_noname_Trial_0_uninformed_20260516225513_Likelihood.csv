@@ -1,15 +1,3 @@
-EvaluationIndex,LevelIndex,InteractionIndex,HasNoveltyLikelihood,NoNoveltyLikelihood, novel object IDs,novelty level,novelty description,trial,levelName, playStatus, informed, novelty
-0,225,1,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00225_1_1_2_0.xml,training,uninformed,basic
-0,225,2,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00225_1_1_2_0.xml,training,uninformed,basic
-0,225,3,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00225_1_1_2_0.xml,training,uninformed,basic
-1,225,4,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00225_1_1_2_0.xml,training,uninformed,basic
-1,86,5,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00086_1_1_2_0.xml,training,uninformed,basic
-1,86,6,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00086_1_1_2_0.xml,training,uninformed,basic
-1,86,7,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00086_1_1_2_0.xml,training,uninformed,basic
-1,86,8,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00086_1_1_2_0.xml,training,uninformed,basic
-2,86,9,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00086_1_1_2_0.xml,training,uninformed,basic
-2,330,10,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00330_1_1_2_0.xml,training,uninformed,basic
-2,330,11,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00330_1_1_2_0.xml,training,uninformed,basic
-2,330,12,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00330_1_1_2_0.xml,training,uninformed,basic
-3,330,13,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00330_1_1_2_0.xml,training,uninformed,basic
-3,142,14,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00142_1_1_2_0.xml,training,uninformed,basic
+version https://git-lfs.github.com/spec/v1
+oid sha256:715432ab5c2f8ae95d3fd21675d0412c62936c026639b9d87abf874b09c11ec7
+size 1654

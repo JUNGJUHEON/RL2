@@ -1,13 +1,3 @@
-EvaluationIndex,LevelIndex,Score,LevelStatus,birdsRemaining,pigsRemaining,birdsAtStart,pigsAtStart, trial,levelName,playStatus,informed,novelty
-1,328,37000,Pass,2,0,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00328_1_1_2_0.xml,training,uninformed,basic
-2,138,23550,Fail,0,4,4,5, 0,./Levels/novelty_level_0/type2_win/Levels/00138_1_1_2_0.xml,training,uninformed,basic
-3,319,44660,Pass,2,0,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00319_1_1_2_0.xml,training,uninformed,basic
-4,66,12960,Fail,0,4,4,5, 0,./Levels/novelty_level_0/type2_win/Levels/00066_1_1_2_0.xml,training,uninformed,basic
-5,53,20,Fail,0,4,4,4, 0,./Levels/novelty_level_0/type2_win/Levels/00053_1_1_2_0.xml,training,uninformed,basic
-6,126,17600,Fail,0,1,3,2, 0,./Levels/novelty_level_0/type2_win/Levels/00126_1_1_2_0.xml,training,uninformed,basic
-7,88,88670,Pass,2,0,4,6, 0,./Levels/novelty_level_0/type2_win/Levels/00088_1_1_2_0.xml,training,uninformed,basic
-8,55,45100,Fail,0,2,4,5, 0,./Levels/novelty_level_0/type2_win/Levels/00055_1_1_2_0.xml,training,uninformed,basic
-9,105,32260,Fail,0,2,4,4, 0,./Levels/novelty_level_0/type2_win/Levels/00105_1_1_2_0.xml,training,uninformed,basic
-10,69,31790,Fail,0,2,4,4, 0,./Levels/novelty_level_0/type2_win/Levels/00069_1_1_2_0.xml,training,uninformed,basic
-11,162,12590,Fail,0,2,3,3, 0,./Levels/novelty_level_0/type2_win/Levels/00162_1_1_2_0.xml,training,uninformed,basic
-12,327,20480,Pass,1,0,3,1, 0,./Levels/novelty_level_0/type2_win/Levels/00327_1_1_2_0.xml,training,uninformed,basic
+version https://git-lfs.github.com/spec/v1
+oid sha256:f278803f2fe63a5486d8e1f94e181a1c0016e878c2941c91ee69154fa1e4f600
+size 1507

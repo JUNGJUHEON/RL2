@@ -1,21 +1,3 @@
-EvaluationIndex,LevelIndex,InteractionIndex,HasNoveltyLikelihood,NoNoveltyLikelihood, novel object IDs,novelty level,novelty description,trial,levelName, playStatus, informed, novelty
-0,211,1,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00211_1_1_2_0.xml,training,uninformed,basic
-0,211,2,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00211_1_1_2_0.xml,training,uninformed,basic
-1,66,3,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00066_1_1_2_0.xml,training,uninformed,basic
-1,66,4,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00066_1_1_2_0.xml,training,uninformed,basic
-1,66,5,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00066_1_1_2_0.xml,training,uninformed,basic
-1,66,6,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00066_1_1_2_0.xml,training,uninformed,basic
-1,66,7,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00066_1_1_2_0.xml,training,uninformed,basic
-2,66,8,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00066_1_1_2_0.xml,training,uninformed,basic
-2,201,9,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00201_1_1_2_0.xml,training,uninformed,basic
-2,201,10,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00201_1_1_2_0.xml,training,uninformed,basic
-2,201,11,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00201_1_1_2_0.xml,training,uninformed,basic
-2,201,12,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00201_1_1_2_0.xml,training,uninformed,basic
-3,201,13,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00201_1_1_2_0.xml,training,uninformed,basic
-3,54,14,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00054_1_1_2_0.xml,training,uninformed,basic
-3,54,15,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00054_1_1_2_0.xml,training,uninformed,basic
-3,54,16,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00054_1_1_2_0.xml,training,uninformed,basic
-3,54,17,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00054_1_1_2_0.xml,training,uninformed,basic
-3,54,18,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00054_1_1_2_0.xml,training,uninformed,basic
-4,54,19,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00054_1_1_2_0.xml,training,uninformed,basic
-4,26,20,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00026_1_1_2_0.xml,training,uninformed,basic
+version https://git-lfs.github.com/spec/v1
+oid sha256:6fcb9d5a24659632c5b381c6c5d202fb0a842302b475416e8c5ced71be270a64
+size 2282

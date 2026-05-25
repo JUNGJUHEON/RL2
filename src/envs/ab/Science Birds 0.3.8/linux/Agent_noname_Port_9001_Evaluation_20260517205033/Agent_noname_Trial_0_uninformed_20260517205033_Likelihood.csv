@@ -1,4 +1,3 @@
-EvaluationIndex,LevelIndex,InteractionIndex,HasNoveltyLikelihood,NoNoveltyLikelihood, novel object IDs,novelty level,novelty description,trial,levelName, playStatus, informed, novelty
-0,145,1,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00145_1_1_2_0.xml,training,uninformed,basic
-0,145,2,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00145_1_1_2_0.xml,training,uninformed,basic
-0,145,3,0,0, ,0,,0,./Levels/novelty_level_0/type2_win/Levels/00145_1_1_2_0.xml,training,uninformed,basic
+version https://git-lfs.github.com/spec/v1
+oid sha256:6425640aa84b79c39bdaa3b19eb6d90e5825ff77bf0cf7a042b8d41259c924b4
+size 499

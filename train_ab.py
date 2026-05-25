@@ -48,7 +48,6 @@ HARDWARE_STATUS = setup_hardware(use_gpu=USE_GPU, gpu_memory_limit=GPU_MEMORY_LI
 
 from src.agent.agent import Agent, continue_practice, restore
 from src.utils.params import ParamScheduler
-from src.envs.angry_birds import AngryBirds
 import src.agent.model as model
 
 # =============================================================
@@ -138,8 +137,8 @@ CONVNEXT_FINETUNE_AT_STEP = _env_int_or_none("AB_CONVNEXT_FINETUNE_AT_STEP", 500
 CONVNEXT_FINETUNE_LR_SCALE = _env_float("AB_CONVNEXT_FINETUNE_LR_SCALE", 0.1)
 
 # Rainbow A/B/C/D/E/F experiment knob.
-# F_base is QR-Rainbow plus train-only proxy reward and ConvNeXt backbone
-# gradient unfreezing at 50k. F_aux adds train-only auxiliary heads.
+# F_base is QR-Rainbow plus train-only proxy reward with a frozen ConvNeXt
+# backbone. F_aux adds train-only auxiliary heads.
 RAINBOW_RUN_VARIANT = _env_str("AB_RAINBOW_RUN_VARIANT", "F_base")
 
 TRAINING_SIZE_PRESET = _env_str("AB_TRAINING_SIZE_PRESET", "f100")
@@ -245,6 +244,10 @@ print(
     f"pig_proxy_bonus={os.environ.get('AB_PIG_PROXY_BONUS', 'default')}"
 )
 
+# AngryBirds reads reward/profile env vars at import time, so import it only
+# after MODEL_EXPERIMENT_PROFILE has applied its environment defaults.
+from src.envs.angry_birds import AngryBirds
+
 if TRAINING_SIZE_PRESET not in TRAINING_SIZE_PRESETS:
     raise ValueError(
         f"TRAINING_SIZE_PRESET={TRAINING_SIZE_PRESET!r} is invalid. "
@@ -318,39 +321,39 @@ RAINBOW_RUN_VARIANTS = {
         "gamma": 0.99,
     },
     "F": {
-        "slug": "rainbow_F_base_qr_n3_noisy_eps_finetune50k",
-        "label": "F_base alias: QR-Rainbow, n_step=3, NoisyNet ON, epsilon 0.05->0.01, ConvNeXt fine-tune at 50k",
+        "slug": "rainbow_F_base_qr_n3_noisy_eps_frozen",
+        "label": "F_base alias: QR-Rainbow, n_step=3, NoisyNet ON, epsilon 0.05->0.03, frozen ConvNeXt",
         "q_head_preset": "qr_rainbow",
         "n_step": 3,
         "noise_std_init": 0.5,
         "epsilon_init": 0.05,
-        "epsilon_min": 0.01,
+        "epsilon_min": 0.03,
         "gamma": 0.99,
-        "convnext_finetune": True,
+        "convnext_finetune": False,
         "auxiliary_heads": False,
     },
     "F_base": {
-        "slug": "rainbow_F_base_qr_n3_noisy_eps_finetune50k",
-        "label": "F_base: QR-Rainbow, n_step=3, NoisyNet ON, epsilon 0.05->0.01, ConvNeXt fine-tune at 50k",
+        "slug": "rainbow_F_base_qr_n3_noisy_eps_frozen",
+        "label": "F_base: QR-Rainbow, n_step=3, NoisyNet ON, epsilon 0.05->0.03, frozen ConvNeXt",
         "q_head_preset": "qr_rainbow",
         "n_step": 3,
         "noise_std_init": 0.5,
         "epsilon_init": 0.05,
-        "epsilon_min": 0.01,
+        "epsilon_min": 0.03,
         "gamma": 0.99,
-        "convnext_finetune": True,
+        "convnext_finetune": False,
         "auxiliary_heads": False,
     },
     "F_aux": {
-        "slug": "rainbow_F_aux_qr_n3_noisy_eps_finetune50k",
-        "label": "F_aux: F_base plus train-only auxiliary outcome heads",
+        "slug": "rainbow_F_aux_qr_n3_noisy_eps_frozen_aux",
+        "label": "F_aux: F_base with epsilon 0.05->0.03, frozen ConvNeXt, plus train-only auxiliary outcome heads",
         "q_head_preset": "qr_rainbow",
         "n_step": 3,
         "noise_std_init": 0.5,
         "epsilon_init": 0.05,
-        "epsilon_min": 0.01,
+        "epsilon_min": 0.03,
         "gamma": 0.99,
-        "convnext_finetune": True,
+        "convnext_finetune": False,
         "auxiliary_heads": True,
     },
 }
